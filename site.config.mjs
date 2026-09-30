@@ -65,6 +65,10 @@ export default {
     StudyNotes: {
       note: 'Obsidian 学习笔记库：408、数据库、编译原理、Go 与三角机构规则整理',
     },
+    home: {
+      note: '这个博客的源码：零依赖静态生成，GitHub Actions 自动部署到 Cloudflare Pages',
+      post: 'hello-world',
+    },
     'new-api': {
       note: 'AI 模型网关：把各家大模型统一转换成 OpenAI / Claude / Gemini 兼容格式（fork 自上游项目）',
     },

@@ -1,17 +1,34 @@
 {
-  "fetchedAt": "2026-09-29T10:48:21.217Z",
+  "fetchedAt": "2026-09-30T02:23:07.015Z",
   "profile": {
     "login": "RichZDS",
     "name": "不会编码的Isaac",
     "bio": "最尊重模块化的选手",
     "avatar": "https://avatars.githubusercontent.com/u/89328906?v=4",
     "url": "https://github.com/RichZDS",
-    "publicRepos": 10,
+    "publicRepos": 11,
     "followers": 2,
     "following": 1,
     "createdAt": "2021-08-22T03:43:03Z"
   },
   "repos": [
+    {
+      "name": "home",
+      "description": "",
+      "url": "https://github.com/RichZDS/home",
+      "homepage": "",
+      "language": "JavaScript",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2026-09-30T02:17:02Z",
+      "pushedAt": "2026-09-30T02:21:54Z",
+      "languages": {
+        "JavaScript": 88589,
+        "CSS": 53226,
+        "Shell": 514
+      }
+    },
     {
       "name": "golangexe",
       "description": "",
