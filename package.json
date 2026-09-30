@@ -2,7 +2,7 @@
   "name": "richzds-blog",
   "version": "1.0.0",
   "private": true,
-  "description": "乌托邦：郑笃实的个人主页，以撒风格的像素画装饰的个人博客。零依赖静态生成，部署在 Cloudflare Pages",
+  "description": "乌托邦：郑笃实的个人主页，四个展厅四种画风。零依赖静态生成，部署在 Cloudflare Pages",
   "type": "module",
   "engines": {
     "node": ">=18"

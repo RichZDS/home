@@ -193,7 +193,7 @@ const mascot = (() => {
   $('.mascot-hit', box).addEventListener('click', poke);
   doc.addEventListener('visibilitychange', sync);
 
-  const twin = $('.banner[data-isaac]');
+  const twin = $('[data-isaac]');
   if (twin && 'IntersectionObserver' in window) {
     st.bannerVisible = true;
     new IntersectionObserver(([entry]) => {
@@ -216,7 +216,7 @@ const mascot = (() => {
 function postFilter() {
   const input = $('[data-filter-input]');
   if (!input) return;
-  const books = $$('.book');
+  const books = $$('.article');
   const chips = $$('.tag-row .tag[data-tag]');
   const row = $('.tag-row');
   const more = $('[data-more]', row);

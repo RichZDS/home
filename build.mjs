@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 静态站点生成：content/posts/*.md + GitHub 数据 + 像素素材 + static/ → dist/
+// 静态站点生成：content/posts/*.md + GitHub 数据 + 字体裁剪 + 像素吉祥物 + static/ → dist/
 // 用法：node build.mjs [--refresh 强制刷新 GitHub 数据] [--drafts 包含草稿]
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
@@ -128,13 +128,60 @@ async function hash(rel) {
   return digest(await fs.readFile(path.join(ROOT, 'static', rel)));
 }
 
-// 用 fonttools 把字体裁成只含 text 里的字，返回 woff2 的 Buffer；没装 fonttools 时返回 null
+// ---------------------------------------------------------------- 字体
+// 每种字体只裁出网站上真正用到的字（fonttools），几 KB 到几十 KB。原件放 fonts-src/，
+// 大字体不进仓库，缺了就从 Google Fonts 的仓库下载到 fonts-src/cache/（已 gitignore）。
+// 没装 fonttools 或下载失败时，页面退回系统字体，照样能用。
+const GF = 'https://raw.githubusercontent.com/google/fonts/main/ofl/';
+const FONTS = {
+  // 像素字：游戏区的标题 + 全站的以撒气泡
+  pixel: { family: 'Fusion Pixel', file: 'fusion-pixel-12px-proportional-zh_hans.otf.woff2', license: 'OFL-fusion-pixel.txt', fallback: true },
+  // 楷书：动漫区、跑团判定
+  brush: { family: 'Ma Shan Zheng', file: 'ma-shan-zheng-regular.woff2', license: 'OFL-ma-shan-zheng.txt', fallback: true },
+  // 站酷小薇：首页 / 关于的大标题和站名
+  xiaowei: { family: 'ZCOOL XiaoWei', cache: 'zcoolxiaowei/ZCOOLXiaoWei-Regular.ttf', url: `${GF}zcoolxiaowei/ZCOOLXiaoWei-Regular.ttf`, licenseUrl: `${GF}zcoolxiaowei/OFL.txt` },
+  // 思源宋体：学习区的标题
+  serif: { family: 'Noto Serif SC', cache: 'notoserifsc/NotoSerifSC[wght].ttf', url: `${GF}notoserifsc/NotoSerifSC%5Bwght%5D.ttf`, licenseUrl: `${GF}notoserifsc/OFL.txt`, weight: '400 900' },
+  // 志莽行书：跑团区的标题
+  xingshu: { family: 'Zhi Mang Xing', cache: 'zhimangxing/ZhiMangXing-Regular.ttf', url: `${GF}zhimangxing/ZhiMangXing-Regular.ttf`, licenseUrl: `${GF}zhimangxing/OFL.txt` },
+  // 几种只用在少量拉丁字母上的展示字体
+  cinzel: { family: 'Cinzel', cache: 'cinzel/Cinzel[wght].ttf', url: `${GF}cinzel/Cinzel%5Bwght%5D.ttf`, licenseUrl: `${GF}cinzel/OFL.txt`, weight: '400 900' },
+  fraktur: { family: 'UnifrakturMaguntia', cache: 'unifrakturmaguntia/UnifrakturMaguntia-Book.ttf', url: `${GF}unifrakturmaguntia/UnifrakturMaguntia-Book.ttf`, licenseUrl: `${GF}unifrakturmaguntia/OFL.txt` },
+  orbitron: { family: 'Orbitron', cache: 'orbitron/Orbitron[wght].ttf', url: `${GF}orbitron/Orbitron%5Bwght%5D.ttf`, licenseUrl: `${GF}orbitron/OFL.txt`, weight: '400 900' },
+};
+
+async function download(url, to) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await fs.mkdir(path.dirname(to), { recursive: true });
+  await fs.writeFile(to, Buffer.from(await res.arrayBuffer()));
+}
+
+// 确保字体原件在本地，返回路径；拿不到返回 null
+async function fontSource(f) {
+  if (f.file) return path.join(ROOT, 'fonts-src', f.file);
+  const file = path.join(ROOT, 'fonts-src/cache', f.cache);
+  const lic = path.join(path.dirname(file), 'OFL.txt');
+  if (!fsSync.existsSync(file)) {
+    try {
+      console.log(`[font] 下载 ${f.family} …`);
+      await download(f.url, file);
+      if (f.licenseUrl) await download(f.licenseUrl, lic);
+    } catch (err) {
+      console.warn(`[font] 下载 ${f.family} 失败（${err.message}），这次不用它`);
+      return null;
+    }
+  }
+  return file;
+}
+
+// 用 fonttools 裁剪，返回 woff2 的 Buffer；失败返回 null
 function subsetFont(src, text) {
   const out = path.join(DIST, `font-${process.pid}.tmp.woff2`);
   try {
     execFileSync(process.env.PYTHON || 'python3', [
       '-m', 'fontTools.subset', src, `--text=${text}`, '--flavor=woff2', `--output-file=${out}`,
-      '--layout-features=kern', '--no-hinting', '--desubroutinize', '--drop-tables+=vhea,vmtx',
+      '--layout-features=kern,liga', '--no-hinting', '--desubroutinize', '--drop-tables+=vhea,vmtx',
     ], { stdio: 'pipe' });
     return fsSync.readFileSync(out);
   } catch (err) {
@@ -145,32 +192,27 @@ function subsetFont(src, text) {
   }
 }
 
-// 像素字体只保留网站上真正出现过的字。需要 fonttools（pip install fonttools brotli）；
-// 没装的话退回完整字体（约 650 KB），网站照样能用，只是第一次打开慢一点。
-async function pixelFont(pages) {
-  const src = path.join(ROOT, 'fonts-src/fusion-pixel-12px-proportional-zh_hans.otf.woff2');
-  const jsDir = path.join(ROOT, 'static/assets/js');
-  const js = await Promise.all((await fs.readdir(jsDir)).map((f) => fs.readFile(path.join(jsDir, f), 'utf8')));
-  const chars = new Set([...pages.join(''), ...js.join('')]);
-  for (let c = 0x20; c < 0x7f; c++) chars.add(String.fromCharCode(c));
-  for (const c of '，。、：；！？“”‘’「」『』（）《》【】…—·～×←→↑↓') chars.add(c);
-  const text = [...chars].filter((c) => c >= ' ' && c !== '\u007f').join('');
-  const buf = subsetFont(src, text) ?? (await fs.readFile(src));
-  const rel = `assets/fonts/pixel.${digest(buf)}.woff2`;
-  await write(rel, buf);
-  await write('assets/fonts/OFL.txt', await fs.readFile(path.join(ROOT, 'fonts-src/OFL-fusion-pixel.txt')));
-  return { url: `/${rel}`, size: buf.length, chars: chars.size };
-}
-
-// 动漫页的毛笔字（马善政楷书，OFL）。完整字体 3 MB 多，只裁出页面上用到的几十个字；
-// 没装 fonttools 就不用毛笔字，退回系统的楷体。
-async function brushFont(text) {
-  const buf = subsetFont(path.join(ROOT, 'fonts-src/ma-shan-zheng-regular.woff2'), [...new Set(text)].join(''));
-  if (!buf) return null;
-  const rel = `assets/fonts/brush.${digest(buf)}.woff2`;
-  await write(rel, buf);
-  await write('assets/fonts/OFL-ma-shan-zheng.txt', await fs.readFile(path.join(ROOT, 'fonts-src/OFL-ma-shan-zheng.txt')));
-  return `/${rel}`;
+// texts: { 字体名: Set<字符> }。返回 { css: @font-face 声明, report }
+async function buildFonts(texts) {
+  const faces = [];
+  const report = [];
+  for (const [name, f] of Object.entries(FONTS)) {
+    const chars = texts[name];
+    if (!chars || !chars.size) continue;
+    const src = await fontSource(f);
+    if (!src) continue;
+    const text = [...chars].filter((c) => c >= ' ' && c !== '\u007f').join('');
+    let buf = subsetFont(src, text);
+    if (!buf && f.fallback) buf = await fs.readFile(src);
+    if (!buf) continue;
+    const rel = `assets/fonts/${name}.${digest(buf)}.woff2`;
+    await write(rel, buf);
+    const lic = f.license ? path.join(ROOT, 'fonts-src', f.license) : path.join(path.dirname(src), 'OFL.txt');
+    if (fsSync.existsSync(lic)) await write(`assets/fonts/OFL-${name}.txt`, await fs.readFile(lic));
+    faces.push(`@font-face{font-family:"${f.family}";src:url(/${rel}) format("woff2");font-weight:${f.weight || 'normal'};font-display:swap}`);
+    report.push(`${name} ${chars.size}字 ${(buf.length / 1024).toFixed(0)}K`);
+  }
+  return { css: faces.join(''), report: report.join(', ') };
 }
 
 async function main() {
@@ -188,8 +230,20 @@ async function main() {
     js: await hash('assets/js/main.js'),
     dice: await hash('assets/js/dice.js'),
   };
-  const brush = await brushFont(T.brushText(site));
-  const ctx = { site, gh, posts, assets, px, brushFont: brush, stats: computeStats(gh) };
+  // 模板渲染时把各种字体用到的字收集到这里，渲染完再裁字体
+  const texts = Object.fromEntries(Object.keys(FONTS).map((k) => [k, new Set()]));
+  const use = (font, text) => {
+    for (const c of String(text)) texts[font].add(c);
+    return text;
+  };
+  // 插画：static/assets/img/ 里有哪张就用哪张（hero-study.jpg → images['hero-study']），带内容 hash 做版本号
+  const images = {};
+  const imgDir = path.join(ROOT, 'static/assets/img');
+  for (const f of await fs.readdir(imgDir)) {
+    const m = f.match(/^(hero-[a-z]+|mascot-[a-z]+)\.(jpg|png|webp)$/);
+    if (m) images[m[1]] = `/assets/img/${f}?v=${digest(await fs.readFile(path.join(imgDir, f)))}`;
+  }
+  const ctx = { site, gh, posts, assets, px, use, images, stats: computeStats(gh) };
 
   const pages = new Map();
   pages.set('index.html', T.home(ctx));
@@ -201,8 +255,15 @@ async function main() {
   for (const [i, p] of posts.entries()) pages.set(`posts/${p.slug}/index.html`, T.post(ctx, p, posts[i + 1], posts[i - 1]));
   pages.set('404.html', T.notFound(ctx));
 
-  const font = await pixelFont([...pages.values()]);
-  for (const [rel, html] of pages) await write(rel, html.replaceAll('__PIXEL_FONT__', font.url));
+  // 像素字：全站的以撒气泡和游戏区都用，把所有页面和脚本里出现过的字都裁进去
+  const jsDir = path.join(ROOT, 'static/assets/js');
+  const js = await Promise.all((await fs.readdir(jsDir)).map((f) => fs.readFile(path.join(jsDir, f), 'utf8')));
+  for (const c of [...pages.values()].join('') + js.join('')) texts.pixel.add(c);
+  for (let c = 0x20; c < 0x7f; c++) texts.pixel.add(String.fromCharCode(c));
+  for (const c of '，。、：；！？“”‘’「」『』（）《》【】…—·～×←→↑↓') texts.pixel.add(c);
+  for (const c of T.SCRIPT_TEXT.brush) texts.brush.add(c);
+  const fonts = await buildFonts(texts);
+  for (const [rel, html] of pages) await write(rel, html.replaceAll('__FONTFACES__', fonts.css));
 
   await write('rss.xml', T.rss(ctx));
   await write('sitemap.xml', T.sitemap(ctx));
@@ -212,7 +273,7 @@ async function main() {
 
   console.log(
     `built ${posts.length} posts + ${gh.repos.length} repos → dist/ ` +
-      `(pixel font ${font.chars} chars, ${(font.size / 1024).toFixed(0)} KiB; brush font ${brush ? 'subset' : 'skipped'}; ${Date.now() - t0} ms)`,
+      `(fonts: ${fonts.report}; ${Date.now() - t0} ms)`,
   );
 }
 

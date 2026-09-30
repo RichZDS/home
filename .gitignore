@@ -4,3 +4,5 @@ dist/
 .env
 .DS_Store
 .github-actions-secret.txt
+fonts-src/cache/
+art-src/
