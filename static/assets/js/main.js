@@ -314,6 +314,136 @@ function postPage() {
   });
 }
 
+/* ---------------------------------------------------------------- 游戏房：街机屏幕上的吃豆人、时不时的 ERROR 报警 */
+
+function gamesRoom() {
+  if (root.dataset.page !== 'games') return;
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  // 屏幕：一个黄色的吃豆人从左到右一张一合地吃豆子，吃完一排从头再来
+  const cv = $('.arcade-screen');
+  if (cv) {
+    const ctx = cv.getContext('2d');
+    let W = 0, H = 0, raf = 0, last = 0, x = 0, dots = [];
+    const fit = () => {
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      W = cv.clientWidth;
+      H = cv.clientHeight;
+      cv.width = Math.round(W * dpr);
+      cv.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    const reset = () => {
+      x = -H * 0.2;
+      dots = Array.from({ length: 7 }, (_, i) => ({ x: W * (0.12 + i * 0.125), eaten: false }));
+    };
+    const draw = (t) => {
+      const r = H * 0.15, y = H * 0.56;
+      ctx.clearRect(0, 0, W, H);
+      // 迷宫的两道墙
+      ctx.strokeStyle = '#ff2e88';
+      ctx.lineWidth = Math.max(1.5, H * 0.02);
+      for (const yy of [H * 0.16, H * 0.24, H * 0.88, H * 0.96]) {
+        ctx.beginPath();
+        ctx.moveTo(H * 0.06, yy);
+        ctx.lineTo(W - H * 0.06, yy);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#ffd9e8';
+      for (const d of dots) {
+        if (d.eaten) continue;
+        ctx.fillRect(d.x - H * 0.02, y - H * 0.02, H * 0.04, H * 0.04);
+      }
+      // 嘴：每秒开合 4 次
+      const mouth = 0.12 + 0.62 * Math.abs(Math.sin(t * Math.PI * 4));
+      ctx.fillStyle = '#ffe23c';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.arc(x, y, r, mouth, Math.PI * 2 - mouth);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#1a0612';
+      ctx.beginPath();
+      ctx.arc(x + r * 0.15, y - r * 0.55, r * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      // 扫描线
+      ctx.fillStyle = 'rgba(0,0,0,.22)';
+      for (let yy = 0; yy < H; yy += 3) ctx.fillRect(0, yy, W, 1);
+    };
+    const frame = (now) => {
+      const dt = Math.min(0.05, (now - last) / 1000 || 0);
+      last = now;
+      x += W * 0.22 * dt;
+      for (const d of dots) if (!d.eaten && x + H * 0.05 >= d.x) d.eaten = true;
+      if (x > W + H * 0.2) reset();
+      draw(now / 1000);
+      raf = doc.hidden ? 0 : requestAnimationFrame(frame);
+    };
+    const start = () => {
+      if (raf || doc.hidden) return;
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+    };
+    fit();
+    reset();
+    if (reduce) {
+      x = W * 0.42;
+      dots.slice(0, 3).forEach((d) => (d.eaten = true));
+      draw(0.06);
+    } else {
+      start();
+      doc.addEventListener('visibilitychange', start);
+    }
+    addEventListener('resize', () => {
+      fit();
+      reset();
+      if (reduce) draw(0.06);
+    }, { passive: true });
+  }
+
+  // 报警：时不时弹一条红色 ERROR，过 1–3 秒自己变成绿色 APPROVE，再淡出
+  const ERRORS = ['SIGNAL LOST', 'CHECKSUM MISMATCH', 'ENTITY 0x1F NOT FOUND', 'MEMORY LEAK DETECTED', 'INPUT LAG > 200 MS', 'COIN JAMMED', 'BRIMSTONE OVERHEAT', 'GENERATOR UNSTABLE'];
+  const OKS = ['RECALIBRATED', 'ALL SYSTEMS NOMINAL', 'SYNC RESTORED', 'ACCESS GRANTED', 'CONTINUE? 9… 8…'];
+  const pickOne = (l) => l[Math.floor(Math.random() * l.length)];
+  const box = doc.createElement('div');
+  box.className = 'hud-alert';
+  box.hidden = true;
+  box.setAttribute('aria-hidden', 'true');
+  box.innerHTML = '<b class="hud-alert-tag"></b><span class="hud-alert-msg"></span><span class="hud-alert-code"></span>';
+  doc.body.append(box);
+  const tag = $('.hud-alert-tag', box), msg = $('.hud-alert-msg', box), code = $('.hud-alert-code', box);
+  const hex = () => '0x' + Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, '0');
+  let timer = 0;
+  const later = (fn, ms) => (timer = setTimeout(fn, ms));
+  function alarm() {
+    if (doc.hidden) return later(alarm, 3000);
+    box.hidden = false;
+    box.classList.remove('is-out', 'is-ok');
+    box.classList.add('is-error');
+    root.dataset.alert = 'error';
+    tag.textContent = 'ERROR';
+    msg.textContent = pickOne(ERRORS);
+    code.textContent = `ERR ${hex()} · RETRY`;
+    later(() => {
+      box.classList.remove('is-error');
+      box.classList.add('is-ok');
+      root.dataset.alert = 'ok';
+      tag.textContent = 'APPROVE';
+      msg.textContent = pickOne(OKS);
+      code.textContent = `OK ${hex()} · RESUME`;
+      later(() => {
+        box.classList.add('is-out');
+        root.dataset.alert = '';
+        later(() => {
+          box.hidden = true;
+          later(alarm, rand(7000, 14000));
+        }, 450);
+      }, 1600);
+    }, rand(1000, 3000));
+  }
+  later(alarm, rand(2500, 5000));
+}
+
 /* ---------------------------------------------------------------- 404：按 R 重来 */
 
 if (root.dataset.page === 'notfound') {
@@ -324,6 +454,7 @@ if (root.dataset.page === 'notfound') {
 
 postFilter();
 postPage();
+gamesRoom();
 
 const diceEl = $('.dice');
 if (diceEl) {

@@ -37,6 +37,7 @@ export const SCRIPT_TEXT = {
   brush: '大成功大失败极难成功困难成功成功失败天然 20！天然 1……Triscendence成功 ×0123456789 个 3',
   cinzel: '0123456789',
   xingshu: '正位逆位',
+  orbitron: 'ERROR APPROVE',
 };
 
 // 首屏渲染前执行：标记 JS 可用；页面切换时浏览器可能会跳过淡入淡出，吞掉它的 promise，免得控制台报错
@@ -342,7 +343,9 @@ export function games(ctx) {
     kicker: use('orbitron', 'GAME ROOM // 02'),
     title: `<span class="glitch" data-text="游戏房">${use('pixel', '游戏房')}</span>`,
     sub: site.games.map((g) => esc(g.name)).join(' · '),
-    alt: '霓虹灯牌：青色霓虹管勾出一台街机的轮廓，屏幕是一整块品红色的光',
+    alt: '霓虹灯牌：青色霓虹管勾出一台街机的轮廓，屏幕上一个黄色的吃豆人一张一合地吃着豆子',
+    // 街机的屏幕：main.js 在这块 canvas 上循环画吃豆人
+    extra: ctx.images['hero-games'] ? '<canvas class="arcade-screen" aria-hidden="true"></canvas>' : '',
   })}
 <div class="wrap">
   <div class="hud-grid">

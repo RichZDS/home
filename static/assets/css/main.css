@@ -167,6 +167,12 @@ kbd { font-family: var(--f-code); font-size: 12px; padding: 1px 5px; border: 1px
   mask-image: radial-gradient(ellipse 70% 75% at 50% 50%, #000 55%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 70% 75% at 50% 50%, #000 55%, transparent 100%);
 }
+/* 街机的屏幕：贴在灯牌图里品红色屏幕的位置上（按图量出来的百分比），main.js 在上面画吃豆人 */
+.arcade-screen {
+  position: absolute; left: 39.1%; top: 25.9%; width: 21.8%; height: 22.4%;
+  background: #1a0612; border-radius: 4% / 6%;
+  box-shadow: inset 0 0 14px rgb(255 46 136 / .55), 0 0 10px rgb(255 46 136 / .25);
+}
 .hero-games .kicker { font-family: var(--f-orbitron); color: var(--accent); letter-spacing: .3em; }
 .hero-games .hero-title { font-size: 80px; color: var(--accent-ink); text-shadow: 0 0 18px rgb(34 230 255 / .35); }
 .hero-games .hero-sub { font-family: var(--f-px); font-size: 22px; color: var(--accent2); }
@@ -518,6 +524,39 @@ button.tag:hover, a.tag:hover { border-color: var(--text); color: var(--text); }
 .loadout-facts li { position: relative; padding-left: 18px; font-size: 14.5px; line-height: 1.6; }
 .loadout-facts li::before { content: '▸'; position: absolute; left: 0; top: 0; color: var(--accent); }
 
+/* 时不时弹出来的报警：红色 ERROR → 绿色 APPROVE → 淡出；页面四边跟着泛一下光 */
+.hud-alert {
+  /* 顶栏是 flex 子项，static 时 z-index 50 也生效，报警要压在它上面 */
+  position: fixed; right: 20px; top: 76px; z-index: 60;
+  width: min(320px, calc(100vw - 32px)); padding: 12px 18px 12px 16px;
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; align-items: baseline;
+  background: rgb(10 12 19 / .94); border: 1px solid var(--accent2);
+  box-shadow: 0 0 26px rgb(255 46 136 / .4), inset 0 0 30px rgb(255 46 136 / .08);
+  backdrop-filter: blur(6px);
+  transition: opacity .4s ease, transform .4s ease, border-color .3s, box-shadow .3s;
+}
+.hud-alert[hidden] { display: none; }
+.hud-alert::before, .hud-alert::after { content: ''; position: absolute; width: 12px; height: 12px; border: 2px solid currentColor; color: var(--accent2); pointer-events: none; }
+.hud-alert::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0; }
+.hud-alert::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+.hud-alert-tag { font: 700 13px/1 var(--f-orbitron); letter-spacing: .3em; color: var(--accent2); }
+.hud-alert-msg { font: 17px/1.2 var(--f-px); color: var(--text); overflow-wrap: anywhere; }
+.hud-alert-code { grid-column: 1 / -1; font: 12px/1.3 var(--f-px); color: var(--dim); letter-spacing: .04em; }
+.hud-alert.is-error { animation: alert-shake .45s ease; }
+.hud-alert.is-error .hud-alert-tag { animation: alert-blink .5s steps(2, jump-none) infinite; }
+.hud-alert.is-ok, .hud-alert.is-ok::before, .hud-alert.is-ok::after { border-color: #37f0a0; color: #37f0a0; }
+.hud-alert.is-ok { box-shadow: 0 0 26px rgb(55 240 160 / .4), inset 0 0 30px rgb(55 240 160 / .08); }
+.hud-alert.is-ok .hud-alert-tag { color: #37f0a0; }
+.hud-alert.is-out { opacity: 0; transform: translateX(24px); }
+@keyframes alert-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+@keyframes alert-blink { 0% { opacity: 1; } 100% { opacity: .25; } }
+html[data-theme='games'] body::after {
+  content: ''; position: fixed; inset: 0; z-index: 47; pointer-events: none;
+  box-shadow: inset 0 0 0 rgb(255 46 136 / 0); transition: box-shadow .45s ease;
+}
+html[data-alert='error'] body::after { box-shadow: inset 0 0 110px rgb(255 46 136 / .42); }
+html[data-alert='ok'] body::after { box-shadow: inset 0 0 110px rgb(55 240 160 / .32); }
+
 /* ---------------------------------------------------------------- 中世纪：跑团 */
 
 .sheet {
@@ -766,6 +805,8 @@ html[data-theme='trpg'] .tag[aria-pressed='true'] { background: var(--accent); b
   .post-nav-older { text-align: left; }
   .hud { padding: 18px 18px 20px; }
   .hud-head h2 { font-size: 36px; }
+  .hud-alert { top: 12px; right: 12px; padding: 10px 14px; }
+  .hud-alert-msg { font-size: 15px; }
   .sheet { padding: 18px 16px 20px; }
   .sheet-head h2 { font-size: 36px; }
   .dice-stage { align-items: flex-end; }
