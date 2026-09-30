@@ -12,7 +12,7 @@ on:
   # Actions 页面上可以手动点「Run workflow」重新部署
   workflow_dispatch:
   schedule:
-    # 每周一 04:00（北京时间）重新拉一次 GitHub 数据，让「项目矩阵」保持最新
+    # 每周一 04:00（北京时间）重新拉一次 GitHub 数据，让图书馆的「项目」保持最新
     - cron: '0 20 * * 0'
 
 concurrency:
@@ -36,6 +36,14 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install font tools
+        # 构建时用 fonttools 把像素字体裁成只含网站上用到的字（几十 KB）
+        run: pip install --disable-pip-version-check fonttools brotli
 
       - name: Build
         # 手动触发和定时任务强制刷新 GitHub 数据；普通推送沿用缓存（超过 12 小时也会自动刷新）

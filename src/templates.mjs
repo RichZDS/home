@@ -1,14 +1,17 @@
 // 页面模板：全部是返回 HTML 字符串的函数，没有模板引擎。
+// 整个网站是一层以撒风格的地下室：首页是起始房，每个主题是一个房间。
 import { esc } from './markdown.mjs';
+import { ROOMS, LAYOUT, solids } from './pixel/rooms.mjs';
+import { DOOR_RECT } from './pixel/art.mjs';
 
-const pad = (n, w = 2) => String(n).padStart(w, '0');
 export const fmtDate = (d) => new Date(new Date(d).getTime() + 8 * 3600e3).toISOString().slice(0, 10);
+const pad = (n, w = 2) => String(n).padStart(w, '0');
 
 const LANG_COLORS = {
-  Go: '#00f0ff', Java: '#ff9e3d', Vue: '#05ffa1', TypeScript: '#4d8dff', JavaScript: '#fcee0a',
-  Python: '#b967ff', CSS: '#ff2a6d', HTML: '#ff6b3d', Dockerfile: '#7aa2c9', Shell: '#9dff6a',
+  Go: '#5ac8e0', Java: '#e8903a', Vue: '#4fbf85', TypeScript: '#4d7fd6', JavaScript: '#e6c84a',
+  Python: '#8d6fd6', CSS: '#d65a8a', HTML: '#e0663d', Dockerfile: '#7aa2c9', Shell: '#8fcf6a',
 };
-export const langColor = (name) => LANG_COLORS[name] || '#8a94b8';
+export const langColor = (name) => LANG_COLORS[name] || '#9e968a';
 
 export function breakdown(languages = {}) {
   const total = Object.values(languages).reduce((a, b) => a + b, 0);
@@ -18,435 +21,375 @@ export function breakdown(languages = {}) {
     .sort((a, b) => b.bytes - a.bytes);
 }
 
-// 在首屏渲染前执行：标记 JS 可用、恢复主题色 / 雨幕开关、决定是否播放开机动画
+// 首屏渲染前执行：标记 JS 可用；记下从哪扇门进来的（决定转场方向和以撒出现的位置）；决定要不要播开场
 const HEAD_SCRIPT =
-  "(function(h){h.classList.add('js');try{var a=localStorage.getItem('accent');if(a)h.dataset.accent=a;" +
-  "if(localStorage.getItem('rain')==='off')h.classList.add('no-rain');" +
-  "if(!sessionStorage.getItem('booted')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)h.classList.add('booting')}catch(e){}})(document.documentElement)";
+  "(function(h){h.classList.add('js');try{var s=sessionStorage,d=s.getItem('utopia.door');" +
+  "if(d){h.dataset.door=d;s.removeItem('utopia.door')}" +
+  "if(h.dataset.page==='home'&&!d&&!s.getItem('utopia.intro')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)h.classList.add('intro')" +
+  '}catch(e){}' +
+  // 快速连点时转场会被浏览器跳过，吞掉它的 promise，免得控制台报错
+  "function q(e){var v=e.viewTransition,n=function(){};if(v){v.ready.catch(n);v.finished.catch(n);v.updateCallbackDone&&v.updateCallbackDone.catch(n)}}" +
+  "addEventListener('pagereveal',q);addEventListener('pageswap',q)" +
+  '})(document.documentElement)';
 
-const NAV = [
-  ['home', '/', '首页', 'HOME'],
-  ['posts', '/posts/', '文章', 'LOGS'],
-  ['projects', '/projects/', '项目', 'REPOS'],
-  ['about', '/about/', '关于', 'ID'],
-];
+const DIR_ZH = { up: '往上', down: '往下', left: '往左', right: '往右' };
+
+// ---------------------------------------------------------------- 框架
 
 function layout(ctx, page, body) {
-  const { site, assets } = ctx;
+  const { site, assets, px } = ctx;
   const url = site.url + page.path;
-  const title = page.title ? `${page.title} · ${site.title}` : `${site.title} · ${site.tagline}`;
+  const title = page.title ? `${page.title} · ${site.title}` : `${site.title} · ${site.author}的地下室`;
   const desc = page.description || site.description;
   return `<!doctype html>
-<html lang="zh-CN" data-page="${page.kind}">
+<html lang="zh-CN" data-page="${page.kind}" data-room="${page.room || ''}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <meta name="author" content="${esc(site.author)}">
-<meta name="theme-color" content="#05060d">
+<meta name="theme-color" content="#140c0a">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="${url}">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="alternate" type="application/rss+xml" title="${esc(site.title)}" href="/rss.xml">
 <meta property="og:type" content="${page.kind === 'post' ? 'article' : 'website'}">
 <meta property="og:site_name" content="${esc(site.title)}">
 <meta property="og:title" content="${esc(page.title || site.title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
-<meta property="og:image" content="${site.url}/assets/img/avatar.jpg">
+<meta property="og:image" content="${site.url}/apple-touch-icon.png">
 <meta name="twitter:card" content="summary">
-<link rel="preload" href="/assets/fonts/orbitron.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/share-tech-mono.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="__PIXEL_FONT__" as="font" type="font/woff2" crossorigin>
+<style>@font-face{font-family:"Fusion Pixel";src:url(__PIXEL_FONT__) format("woff2");font-display:swap}${px.css}</style>
 <link rel="stylesheet" href="/assets/css/main.css?v=${assets.css}">
 <script>${HEAD_SCRIPT}</script>
-<script src="/assets/js/main.js?v=${assets.js}" data-term="/assets/js/terminal.js?v=${assets.term}" defer></script>
+<script type="module" src="/assets/js/main.js?v=${assets.js}" id="main-js" data-stage="/assets/js/stage.js?v=${assets.stage}" data-sheet="${px.urls['assets/px/sheet.png']}"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">跳到正文</a>
-<canvas class="rain" id="rain" aria-hidden="true"></canvas>
-<div class="crt" aria-hidden="true"></div>
-<div class="boot" aria-hidden="true">
-  <div class="boot-box">
-    <p class="boot-logo glitch" data-text="RICHZDS">RICHZDS</p>
-    <pre class="boot-log"></pre>
-    <div class="boot-bar"><i></i></div>
-    <p class="boot-skip">PRESS ANY KEY TO SKIP</p>
-  </div>
-</div>
-${page.kind === 'post' ? '<div class="read-progress" aria-hidden="true"><i></i></div>\n' : ''}${header(ctx, page)}
-<main id="main" class="main">
+${minimap(ctx, page.room)}
+${page.kind === 'post' ? '<div class="read-progress" aria-hidden="true"><i></i></div>\n' : ''}<main id="main" class="main">
 ${body}
 </main>
 ${footer(ctx)}
+<div class="mascot" hidden>
+  <canvas class="mascot-cv" width="80" height="64" aria-hidden="true"></canvas>
+  <button class="mascot-hit" type="button" aria-label="戳一下以撒"></button>
+  <p class="mascot-say" role="status" hidden></p>
+</div>
+<script type="application/json" id="px-atlas">${JSON.stringify(px.atlas)}</script>
 </body>
 </html>
 `;
 }
 
-function header(ctx, page) {
-  const links = NAV.map(
-    ([key, href, zh, en]) =>
-      `<a href="${href}"${page.nav === key ? ' aria-current="page"' : ''}><span class="nav-en">${en}</span>${zh}</a>`,
-  ).join('');
-  return `<header class="topbar">
-  <div class="container topbar-inner">
-    <a class="logo" href="/" aria-label="${esc(ctx.site.title)} 首页">
-      <span class="logo-mark" aria-hidden="true"></span><span class="logo-text">RICHZDS</span><span class="logo-sub">//NET</span>
-    </a>
-    <nav class="nav" aria-label="主导航">${links}</nav>
-    <button class="term-btn" type="button" data-term-open title="打开终端（快捷键 \` 或 Ctrl+K）" aria-label="打开终端"><span aria-hidden="true">&gt;_</span></button>
-  </div>
-</header>`;
+function icon(name, s) {
+  return `<i class="px px-${name.replace(/\./g, '-')}"${s ? ` style="--s:${s}px"` : ''} aria-hidden="true"></i>`;
+}
+
+function minimap(ctx, current) {
+  const cells = Object.entries(ROOMS)
+    .map(([id, r]) => {
+      const style = `--c:${r.cell[0]};--r:${r.cell[1]}`;
+      const inner = r.icon ? icon(r.icon) : '';
+      const here = id === current;
+      if (!r.ready) return `<span class="mm-room is-locked" data-room="${id}" style="${style}" title="${r.name} · 施工中">${inner}<span class="sr-only">${r.name}（施工中）</span></span>`;
+      return `<a class="mm-room${here ? ' is-here' : ''}" data-room="${id}" href="${r.path}" style="${style}"${here ? ' aria-current="page"' : ''} title="${r.name}">${inner}<span class="sr-only">${r.name}</span></a>`;
+    })
+    .join('');
+  return `<nav class="minimap" aria-label="楼层地图">
+  <div class="mm-grid">${cells}</div>
+  <a class="mm-name" href="/">${esc(ctx.site.title)}</a>
+</nav>`;
 }
 
 function footer(ctx) {
-  const { site, gh } = ctx;
+  const { site } = ctx;
   return `<footer class="footer">
-  <div class="container footer-inner">
-    <div class="footer-brand">
-      <p class="footer-logo">RICHZDS<span>//</span>NET</p>
-      <p class="footer-bio">${esc(gh.profile.name)} · ${esc(gh.profile.bio)}</p>
-    </div>
-    <div class="footer-status mono">
-      <p><span class="status-dot"></span>SYSTEM ONLINE</p>
-      <p>UPTIME <span data-uptime="${esc(site.since)}">--</span></p>
-    </div>
-    <nav class="footer-links mono" aria-label="站外链接">
-      <a href="${gh.profile.url}" target="_blank" rel="noopener">GITHUB ↗</a>
-      <a href="/rss.xml">RSS</a>
-      <button type="button" data-term-open>TERMINAL &gt;_</button>
-    </nav>
-  </div>
-  <p class="container footer-copy mono">© ${new Date().getFullYear()} ${esc(site.github)} · 零依赖静态生成 · 托管于 Cloudflare Pages</p>
+  <p class="footer-links">
+    <a href="https://github.com/${site.github}" target="_blank" rel="noopener">GitHub</a>
+    <a href="${site.bilibili.url}" target="_blank" rel="noopener">B 站 · ${esc(site.bilibili.name)}</a>
+    <a href="/rss.xml">RSS</a>
+  </p>
+  <p class="footer-note">© ${new Date().getFullYear()} ${esc(site.author)} · ${esc(site.title)}。以撒的结合同人风格，像素画全部用代码自己画的 · 像素字体 <a href="https://github.com/TakWolf/fusion-pixel-font" target="_blank" rel="noopener">Fusion Pixel</a>（OFL）</p>
 </footer>`;
 }
 
-// ---------------------------------------------------------------- 组件
+// ---------------------------------------------------------------- 舞台（房间）
 
-function sectionHead(zh, en, href, more) {
-  return `<header class="section-head">
-  <h2 class="section-title"><span class="section-en mono">${en}</span><span data-decrypt>${zh}</span></h2>
-  ${href ? `<a class="section-more mono" href="${href}">${more} →</a>` : ''}
-</header>`;
+function pos(x, y, w, h) {
+  return `--x:${x};--y:${y}${w != null ? `;--w:${w};--h:${h}` : ''}`;
 }
 
-function tags(list, max = 99) {
-  return list
-    .slice(0, max)
-    .map((t) => `<span class="tag">${esc(t)}</span>`)
-    .join('');
+function doors(id) {
+  return Object.entries(ROOMS[id].doors)
+    .map(([dir, target]) => {
+      const t = ROOMS[target];
+      const r = DOOR_RECT[dir];
+      const style = pos(r.x, r.y, r.w, r.h);
+      if (!t.ready)
+        return `<button class="door is-locked" type="button" data-dir="${dir}" style="${style}" aria-label="${DIR_ZH[dir]}：${t.name}（施工中）"><span class="tip">${t.name} · 施工中</span></button>`;
+      return `<a class="door" data-dir="${dir}" data-room="${target}" href="${t.path}" style="${style}" aria-label="${DIR_ZH[dir]}：${t.name}"><span class="tip">${t.name}</span></a>`;
+    })
+    .join('\n    ');
 }
 
-function tagLinks(list) {
-  return list
-    .map((t) => `<a class="tag" href="/posts/?tag=${encodeURIComponent(t.toLowerCase())}">${esc(t)}</a>`)
-    .join('');
+function hud() {
+  return `<div class="hud" aria-hidden="true">
+      <span class="hud-hearts">${icon('heart')}${icon('heart')}${icon('heart')}</span>
+      <span class="hud-row">${icon('coin')}<b data-hud="coins">00</b></span>
+      <span class="hud-row">${icon('bomb')}<b data-hud="bombs">01</b></span>
+      <span class="hud-row">${icon('key')}<b data-hud="keys">00</b></span>
+    </div>`;
 }
 
-function postCard(p, i = 0) {
-  return `<article class="card post-card reveal" style="--d:${i * 70}ms">
-  <div class="card-shape"><div class="card-body">
-    <div class="card-top mono"><span class="card-idx">LOG#${pad(p.index)}</span><time datetime="${p.date.toISOString()}">${fmtDate(p.date)}</time><span>${p.minutes} MIN</span></div>
-    <h3 class="card-title"><a href="${p.url}">${esc(p.title)}</a></h3>
-    <p class="card-text">${esc(p.summary)}</p>
-    <div class="card-tags">${tags(p.tags, 4)}</div>
-  </div></div>
-</article>`;
+function stage(ctx, id, overlay, alt) {
+  const room = ROOMS[id];
+  const L = LAYOUT[id];
+  const data = {
+    id,
+    spawn: L.spawn,
+    entities: L.entities ?? [],
+    solids: solids(id),
+    portrait: L.portrait ?? null,
+    doors: Object.entries(room.doors).map(([dir, target]) => ({ dir, href: ROOMS[target].path, locked: !ROOMS[target].ready, name: ROOMS[target].name })),
+  };
+  return `<section class="stage" data-room="${id}" aria-label="${room.name}">
+  <div class="stage-box">
+    <img class="stage-bg" src="${ctx.px.urls[`assets/px/room-${id}.png`]}" width="240" height="160" alt="${esc(alt)}">
+    <canvas class="stage-cv" width="240" height="160" aria-hidden="true"></canvas>
+    ${doors(id)}
+    ${overlay}
+    ${hud()}
+    <div class="floor-banner" aria-hidden="true"><span>${esc(ctx.site.title)}</span></div>
+  </div>
+  <script type="application/json" class="stage-data">${JSON.stringify(data)}</script>
+</section>`;
+}
+
+// ---------------------------------------------------------------- 首页：起始房
+
+export function home(ctx) {
+  const { site } = ctx;
+  const L = LAYOUT.start;
+  const overlay = `<p class="chalk chalk-big" style="${pos(120, 40)}">${esc(site.intro.name)}</p>
+    ${site.intro.lines.map((l, i) => `<p class="chalk" style="${pos(120, 57 + i * 9)}">${esc(l)}</p>`).join('\n    ')}
+    <p class="chalk chalk-hint keys-only" style="${pos(50, 121)}">移动</p>
+    <p class="chalk chalk-hint keys-only" style="${pos(190, 121)}">眼泪</p>
+    <p class="chalk chalk-hint touch-only" style="${pos(120, 134)}">点地面走路 · 点门进房间</p>
+    <p class="plaque-text" style="${pos(L.plaque.x + L.plaque.w / 2, L.plaque.y + 3)}">${esc(site.title)}</p>
+    <span class="portrait" style="${pos(L.portrait.x, L.portrait.y, L.portrait.w, L.portrait.h)}" title="头像：日月同错 · 海山"></span>`;
+
+  const guide = Object.entries(ROOMS)
+    .filter(([id]) => id !== 'start')
+    .map(([id, r]) => {
+      const desc = {
+        library: '文章 · 项目 · 经历',
+        dice: '3D 骰塔：CoC · 三角机构 · DnD',
+        planetarium: '韦特塔罗：每日一张 · 三张牌阵 · 凯尔特十字',
+        games: '以撒的结合 · 黎明杀机',
+        shop: 'B 站 · GitHub',
+        penglai: '一人之下 · 日月同错',
+      }[id];
+      const inner = `${icon(r.icon)}<b>${r.name}</b><span>${desc}</span>`;
+      return r.ready
+        ? `<li><a class="guide-item" href="${r.path}" data-room="${id}">${inner}</a></li>`
+        : `<li><span class="guide-item is-locked">${inner}<em>施工中</em></span></li>`;
+    })
+    .join('\n    ');
+
+  const body = `<h1 class="sr-only">${esc(site.title)} · ${esc(site.author)}的个人主页</h1>
+${stage(ctx, 'start', overlay, `起始房：石墙地下室，地上用粉笔写着「${site.intro.name}」，四面各有一扇门`)}
+<section class="guide" aria-labelledby="guide-title">
+  <h2 class="guide-title" id="guide-title">楼层导览</h2>
+  <ul class="guide-list">
+    ${guide}
+  </ul>
+</section>`;
+  return layout(ctx, { kind: 'home', room: 'start', path: '/' }, body);
+}
+
+// ---------------------------------------------------------------- 图书馆
+
+function tagChip(t, n, on = false, extra = false) {
+  return `<button type="button" class="tag${on ? ' is-on' : ''}${extra ? ' tag-extra' : ''}" data-tag="${esc(t.toLowerCase())}">${esc(t || '全部')}<sup>${n}</sup></button>`;
+}
+const TAGS_SHOWN = 12;
+
+const SPINES = ['#3a57a8', '#c41e24', '#2f7d4a', '#8a3b8f', '#b8862b', '#355a7a', '#7a2e20'];
+
+function bookItem(p) {
+  const color = SPINES[p.index % SPINES.length];
+  return `<li class="book" data-tags="${esc(p.tags.join('|').toLowerCase())}" data-text="${esc(`${p.title} ${p.summary}`.toLowerCase())}">
+      <a href="${p.url}">
+        <span class="book-spine" style="--c:${color}" aria-hidden="true"><b>${pad(p.index)}</b></span>
+        <span class="book-main">
+          <span class="book-meta"><time datetime="${p.date.toISOString()}">${fmtDate(p.date)}</time> · ${p.minutes} 分钟</span>
+          <span class="book-title">${esc(p.title)}</span>
+          <span class="book-sum">${esc(p.summary)}</span>
+          <span class="book-tags">${p.tags.slice(0, 4).map((t) => `<span class="tag tag-sm">${esc(t)}</span>`).join('')}</span>
+        </span>
+      </a>
+    </li>`;
 }
 
 function repoNote(ctx, repo) {
   return ctx.site.repoNotes[repo.name] || {};
 }
 
-function repoCard(ctx, repo, i = 0) {
+function repoCard(ctx, repo) {
   const note = repoNote(ctx, repo);
   const langs = breakdown(repo.languages);
   const bar = langs.length
     ? langs.map((l) => `<i style="width:${l.pct.toFixed(2)}%;background:${langColor(l.name)}"></i>`).join('')
     : `<i style="width:100%;background:${langColor(repo.language)}"></i>`;
-  const langLabel = langs.length
-    ? langs.slice(0, 3).map((l) => `<span><b style="--c:${langColor(l.name)}"></b>${esc(l.name)}</span>`).join('')
-    : repo.language
-      ? `<span><b style="--c:${langColor(repo.language)}"></b>${esc(repo.language)}</span>`
-      : '<span><b style="--c:#8a94b8"></b>资料</span>';
+  const langLabel = (langs.length ? langs.slice(0, 3).map((l) => l.name) : [repo.language || '资料'])
+    .map((n) => `<span><b style="--c:${langColor(n)}"></b>${esc(n)}</span>`)
+    .join('');
   const hasPost = note.post && ctx.posts.some((p) => p.slug === note.post);
-  return `<article class="card repo-card reveal" style="--d:${i * 70}ms">
-  <div class="card-shape"><div class="card-body">
-    <div class="repo-head">
-      <span class="repo-icon" aria-hidden="true"></span>
-      <h3 class="card-title"><a href="${repo.url}" target="_blank" rel="noopener">${esc(repo.name)}</a></h3>
-      ${repo.fork ? '<span class="badge">FORK</span>' : ''}
-    </div>
-    <p class="card-text">${esc(note.note || repo.description || '暂无描述')}</p>
-    <div class="lang-bar" aria-hidden="true">${bar}</div>
-    <div class="repo-meta mono">${langLabel}<span>★ ${repo.stars}</span><span>${fmtDate(repo.pushedAt)}</span></div>
-    ${hasPost ? `<a class="repo-post mono" href="/posts/${note.post}/">阅读档案 →</a>` : ''}
-  </div></div>
-</article>`;
+  return `<article class="repo">
+      <h3 class="repo-name"><a href="${repo.url}" target="_blank" rel="noopener">${esc(repo.name)}</a>${repo.fork ? '<span class="badge">fork</span>' : ''}</h3>
+      <p class="repo-note">${esc(note.note || repo.description || '暂无描述')}</p>
+      <div class="lang-bar" aria-hidden="true">${bar}</div>
+      <p class="repo-meta">${langLabel}<span>★ ${repo.stars}</span><span>${fmtDate(repo.pushedAt)}</span></p>
+      ${hasPost ? `<a class="repo-post" href="/posts/${note.post}/">读这篇文章 →</a>` : ''}
+    </article>`;
 }
 
-function langPanel(ctx) {
-  const { stats, site } = ctx;
-  const top = stats.languages.slice(0, 7);
-  return `<div class="lang-panel reveal">
-  <div class="lang-stack" aria-hidden="true">${top
-    .map((l) => `<i style="flex-basis:${l.pct.toFixed(2)}%;background:${langColor(l.name)}"></i>`)
-    .join('')}</div>
-  <ul class="lang-list">${top
-    .map(
-      (l) =>
-        `<li style="--c:${langColor(l.name)};--w:${l.pct.toFixed(2)}%"><span class="lang-name">${esc(l.name)}</span><span class="lang-meter"><i></i></span><span class="lang-pct mono">${l.pct.toFixed(1)}%</span></li>`,
-    )
-    .join('')}</ul>
-  <p class="lang-note mono">// 统计自 ${stats.ownRepos} 个非 fork 仓库，共 ${(stats.totalBytes / 1024).toFixed(0)} KB 源码</p>
-  <div class="chips">${site.stack.map((s) => `<span class="chip">${esc(s)}</span>`).join('')}</div>
-</div>`;
+function timeline(ctx) {
+  const items = ctx.site.timeline;
+  return items
+    .map((t, i) => {
+      const last = i === items.length - 1;
+      return `<li class="floor${last ? ' is-here' : ''}" data-kind="${t.kind}">
+      <span class="floor-no">${i + 1}</span>
+      <span class="floor-main">
+        <b class="floor-name">${esc(t.name)}</b>${t.role ? `<span class="floor-role">${esc(t.role)}</span>` : ''}${t.period ? `<span class="floor-period">${esc(t.period)}</span>` : ''}
+      </span>
+      ${last ? `<span class="floor-you">${icon('isaac.face')}<em>你在这里</em></span>` : ''}
+    </li>`;
+    })
+    .join('\n    ');
 }
 
-function pageHead(crumb, cmd, title, desc) {
-  return `<section class="container page-head">
-  <p class="crumb mono">${crumb} <span class="dim">$ ${cmd}</span></p>
-  <h1 class="page-title" data-decrypt>${esc(title)}</h1>
-  ${desc ? `<p class="page-desc">${desc}</p>` : ''}
-</section>`;
-}
-
-// ---------------------------------------------------------------- 页面
-
-export function home(ctx) {
-  const { site, gh, posts, stats } = ctx;
-  const p = gh.profile;
-  const featured = site.featured.map((n) => gh.repos.find((r) => r.name === n)).filter(Boolean);
-  const body = `<section class="hero">
-  <div class="hero-bg" aria-hidden="true">
-    <div class="hero-moon"></div>
-    <img class="skyline skyline-far" src="/assets/img/skyline-far.svg" alt="" width="1600" height="320">
-    <img class="skyline skyline-near" src="/assets/img/skyline-near.svg" alt="" width="1600" height="260">
-    <div class="neon-sign"><span>模</span><span>块</span><span>化</span></div>
-    <div class="grid-floor"></div>
-    <div class="hero-fog"></div>
-  </div>
-  <div class="container hero-inner">
-    <div class="hero-copy">
-      <p class="hud-label mono"><span class="hud-dot"></span>NEURAL LINK ESTABLISHED <span class="dim">// NODE: CF-EDGE</span></p>
-      <h1 class="hero-title glitch" data-text="RICHZDS">RICHZDS</h1>
-      <p class="hero-sub">${esc(p.name)}<span class="sep">/</span>${esc(p.bio)}</p>
-      <p class="typer-line mono"><span class="prompt">guest@richzds:~$</span> <span class="typer" data-typer="${esc(JSON.stringify(site.typer))}">${esc(site.typer[0])}</span><span class="caret" aria-hidden="true"></span></p>
-      <div class="hero-cta">
-        <a class="btn btn-primary" href="/posts/"><span>进入档案</span><small>ENTER</small></a>
-        <a class="btn btn-ghost" href="${p.url}" target="_blank" rel="noopener"><span>GitHub</span><small>↗</small></a>
-      </div>
-    </div>
-    <div class="id-card" aria-hidden="true">
-      <div class="id-orbit"><i></i><i></i><i></i></div>
-      <div class="id-photo"><img src="/assets/img/avatar.jpg" alt="" width="220" height="220"><i class="id-scan"></i></div>
-      <p class="id-tag mono">ID#${esc(String(ctx.gh.profile.login).toUpperCase())} <span>// NETRUNNER</span></p>
-    </div>
-  </div>
-  <a class="scroll-hint mono" href="#latest">SCROLL<span aria-hidden="true">▼</span></a>
-</section>
-
-<section class="container stats" aria-label="数据面板">
-  <div class="stat reveal"><span class="stat-num" data-count="${p.publicRepos}">${p.publicRepos}</span><span class="stat-label">公开仓库</span><span class="stat-en mono">PUBLIC_REPOS</span></div>
-  <div class="stat reveal" style="--d:80ms"><span class="stat-num" data-count="${Math.round(stats.totalBytes / 1024)}">${Math.round(stats.totalBytes / 1024)}</span><span class="stat-unit mono">KB</span><span class="stat-label">源码体积</span><span class="stat-en mono">SOURCE_SIZE</span></div>
-  <div class="stat reveal" style="--d:160ms"><span class="stat-num" data-count="${posts.length}">${posts.length}</span><span class="stat-label">篇档案</span><span class="stat-en mono">LOGS</span></div>
-  <div class="stat reveal" style="--d:240ms"><span class="stat-num">${p.createdAt.slice(0, 4)}</span><span class="stat-label">接入 GitHub</span><span class="stat-en mono">LINKED_SINCE</span></div>
-</section>
-
-<section class="container section" id="latest">
-  ${sectionHead('最新档案', 'LATEST_LOGS', '/posts/', '全部文章')}
-  <div class="post-grid">${posts.slice(0, 6).map(postCard).join('\n')}</div>
-</section>
-
-<section class="container section">
-  ${sectionHead('项目矩阵', 'PROJECT_MATRIX', '/projects/', '全部项目')}
-  <div class="repo-grid">${featured.map((r, i) => repoCard(ctx, r, i)).join('\n')}</div>
-</section>
-
-<section class="container section">
-  ${sectionHead('技能芯片', 'CYBERWARE')}
-  ${langPanel(ctx)}
-</section>`;
-  return layout(ctx, { kind: 'home', nav: 'home', path: '/' }, body);
-}
-
-export function postsIndex(ctx) {
-  const { posts } = ctx;
+export function library(ctx) {
+  const { posts, gh, site, stats } = ctx;
   const counts = new Map();
   posts.forEach((p) => p.tags.forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)));
   const allTags = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const years = new Map();
-  posts.forEach((p) => {
-    const y = fmtDate(p.date).slice(0, 4);
-    if (!years.has(y)) years.set(y, []);
-    years.get(y).push(p);
-  });
-  const groups = [...years]
-    .map(
-      ([year, list]) => `<section class="year-group">
-  <h2 class="year mono">${year}<span>// ${pad(list.length)} LOGS</span></h2>
-  <ol class="log-list">${list
-    .map(
-      (p) => `<li class="log-item reveal" data-tags="${esc(p.tags.join('|').toLowerCase())}" data-text="${esc(`${p.title} ${p.summary}`.toLowerCase())}">
-    <a href="${p.url}">
-      <span class="log-idx mono">#${pad(p.index)}</span>
-      <time class="log-date mono" datetime="${p.date.toISOString()}">${fmtDate(p.date).slice(5)}</time>
-      <span class="log-main"><span class="log-title">${esc(p.title)}</span><span class="log-sum">${esc(p.summary)}</span></span>
-      <span class="log-tags mono">${p.tags.slice(0, 3).map((t) => `#${esc(t)}`).join(' ')}</span>
-    </a>
-  </li>`,
-    )
-    .join('\n')}</ol>
-</section>`,
-    )
-    .join('\n');
+  const featured = site.featured.map((n) => gh.repos.find((r) => r.name === n)).filter(Boolean);
+  const L = LAYOUT.library;
+  const labels = [
+    ['posts', '文章', `${posts.length} 篇`],
+    ['projects', '项目', `${featured.length} 个`],
+    ['timeline', '经历', `${site.timeline.length} 层`],
+  ];
+  const overlay = L.shelves
+    .map((s, i) => {
+      const [id, name, count] = labels[i];
+      const p = L.plaques[i];
+      return `<a class="shelf-hot" href="#${id}" style="${pos(s.x, s.y, s.w, s.h)}" aria-label="${name}书架（${count}）"><span class="tip">${name} · ${count}</span></a>
+    <p class="plaque-text" style="${pos(p.x + p.w / 2, p.y + 1)}">${name}</p>`;
+    })
+    .join('\n    ');
 
-  const body = `${pageHead('~/posts', 'ls -la', '档案库', `共 ${posts.length} 篇：项目拆解、学习笔记和折腾记录`)}
-<section class="container filter-bar">
-  <label class="search mono"><span>grep</span><input type="search" placeholder="搜索标题、摘要、标签…" autocomplete="off" data-filter-input></label>
-  <div class="chips" role="group" aria-label="按标签筛选">
-    <button type="button" class="chip is-on" data-tag="">全部<sup>${posts.length}</sup></button>
-    ${allTags
-      .map(([t, n], i) => `<button type="button" class="chip${i >= 10 ? ' chip-extra' : ''}" data-tag="${esc(t.toLowerCase())}">${esc(t)}<sup>${n}</sup></button>`)
-      .join('')}
-    ${allTags.length > 10 ? `<button type="button" class="chip chip-more" data-more>更多 +${allTags.length - 10}</button>` : ''}
-  </div>
-</section>
-<section class="container archive">
-${groups}
-<p class="empty mono" hidden>[ 0 RESULTS ] 没有匹配的档案，换个关键词试试</p>
-</section>`;
-  return layout(ctx, { kind: 'posts', nav: 'posts', path: '/posts/', title: '档案库', description: `RichZDS 的全部文章，共 ${posts.length} 篇。` }, body);
+  const top = stats.languages.slice(0, 6);
+  const body = `<h1 class="sr-only">图书馆</h1>
+${stage(ctx, 'library', overlay, '图书馆：三排摆满书的书架、红色地毯和四根蜡烛')}
+<div class="library">
+  <section class="sheet" id="posts" aria-labelledby="posts-title">
+    <header class="sheet-head">${icon('icon.book')}<h2 id="posts-title">文章</h2><span class="sheet-count">${posts.length} 篇</span></header>
+    <div class="book-tools">
+      <label class="search"><span class="sr-only">搜索文章</span><input type="search" placeholder="搜标题、摘要、标签……" autocomplete="off" data-filter-input></label>
+      <div class="tag-row" role="group" aria-label="按标签筛选">
+        ${tagChip('', posts.length, true)}${allTags.map(([t, n], i) => tagChip(t, n, false, i >= TAGS_SHOWN)).join('')}${allTags.length > TAGS_SHOWN ? `<button type="button" class="tag tag-more" data-more>更多 +${allTags.length - TAGS_SHOWN}</button>` : ''}
+      </div>
+    </div>
+    <ol class="books">
+    ${posts.map(bookItem).join('\n    ')}
+    </ol>
+    <p class="empty" hidden>书架上没有这本……换个词试试</p>
+  </section>
+
+  <section class="sheet" id="projects" aria-labelledby="projects-title">
+    <header class="sheet-head">${icon('icon.crown')}<h2 id="projects-title">项目</h2><span class="sheet-count">${featured.length} / ${gh.repos.length}</span></header>
+    <div class="repos">
+    ${featured.map((r) => repoCard(ctx, r)).join('\n    ')}
+    </div>
+    <div class="langs">
+      <div class="lang-stack" aria-hidden="true">${top.map((l) => `<i style="flex-basis:${l.pct.toFixed(2)}%;background:${langColor(l.name)}"></i>`).join('')}</div>
+      <p class="lang-legend">${top.map((l) => `<span><b style="--c:${langColor(l.name)}"></b>${esc(l.name)} ${l.pct.toFixed(1)}%</span>`).join('')}</p>
+      <p class="lang-note">统计自 ${stats.ownRepos} 个非 fork 仓库 · <a href="https://github.com/${site.github}?tab=repositories" target="_blank" rel="noopener">全部仓库 →</a></p>
+      <p class="stack">${site.stack.map((s) => `<span class="tag tag-sm">${esc(s)}</span>`).join('')}</p>
+    </div>
+  </section>
+
+  <section class="sheet" id="timeline" aria-labelledby="timeline-title">
+    <header class="sheet-head">${icon('icon.skull')}<h2 id="timeline-title">经历</h2><span class="sheet-count">一局以撒，一层一层往下走</span></header>
+    <ol class="floors">
+    ${timeline(ctx)}
+    </ol>
+  </section>
+</div>`;
+  return layout(ctx, { kind: 'library', room: 'library', path: '/library/', title: '图书馆', description: `${site.author}的文章、项目和经历。` }, body);
 }
+
+// ---------------------------------------------------------------- 文章
 
 export function post(ctx, p, older, newer) {
   const repo = p.repo && ctx.gh.repos.find((r) => r.name === p.repo);
   const toc =
     p.headings.length >= 3
       ? `<aside class="toc" aria-label="本文目录">
-    <p class="toc-title mono">// INDEX</p>
+    <p class="toc-title">目录</p>
     <ol>${p.headings.map((h) => `<li class="lv${h.level}"><a href="#${h.id}">${h.html}</a></li>`).join('')}</ol>
   </aside>`
       : '';
   const navLink = (item, dir, label) =>
-    item
-      ? `<a class="post-nav-${dir}" href="${item.url}"><span class="mono">${label}</span>${esc(item.title)}</a>`
-      : '<span></span>';
+    item ? `<a class="post-nav-${dir}" href="${item.url}"><span>${label}</span>${esc(item.title)}</a>` : '<span></span>';
   const body = `<article class="post">
-  <header class="container post-head">
-    <p class="crumb mono"><a href="/posts/">~/posts</a>/${esc(p.slug)}</p>
-    <h1 class="post-title" data-decrypt>${esc(p.title)}</h1>
-    <div class="post-meta mono">
-      <span class="accent">LOG#${pad(p.index)}</span>
+  <header class="post-head">
+    <nav class="crumbs" aria-label="位置"><a href="/">${esc(ctx.site.title)}</a><span>›</span><a href="/library/">图书馆</a><span>›</span><a href="/library/#posts">文章</a></nav>
+    <h1 class="post-title">${esc(p.title)}</h1>
+    <p class="post-meta">
+      <span>第 ${pad(p.index)} 本</span>
       <time datetime="${p.date.toISOString()}">${fmtDate(p.date)}</time>
-      <span>${p.minutes} MIN READ</span>
-      ${p.period ? `<span>PROJECT ${esc(p.period)}</span>` : ''}
-      ${repo ? `<a href="${repo.url}" target="_blank" rel="noopener">REPO ↗ ${esc(repo.name)}</a>` : ''}
-    </div>
-    <div class="post-tags">${tagLinks(p.tags)}</div>
+      <span>${p.minutes} 分钟</span>
+      ${p.period ? `<span>项目时间 ${esc(p.period)}</span>` : ''}
+      ${repo ? `<a href="${repo.url}" target="_blank" rel="noopener">仓库 ${esc(repo.name)} ↗</a>` : ''}
+    </p>
+    <p class="post-tags">${p.tags.map((t) => `<a class="tag tag-sm" href="/library/?tag=${encodeURIComponent(t.toLowerCase())}#posts">${esc(t)}</a>`).join('')}</p>
   </header>
-  <div class="container post-layout${toc ? ' has-toc' : ''}">
-    <div class="prose">
+  <div class="post-layout${toc ? ' has-toc' : ''}">
+    <div class="paper prose">
 ${p.html}
     </div>
     ${toc}
   </div>
-  <nav class="container post-nav" aria-label="上一篇和下一篇">
-    ${navLink(newer, 'newer', '← NEWER')}
-    ${navLink(older, 'older', 'OLDER →')}
+  <nav class="post-nav" aria-label="上一本和下一本">
+    ${navLink(newer, 'newer', '← 新一点的')}
+    ${navLink(older, 'older', '旧一点的 →')}
   </nav>
 </article>`;
-  return layout(ctx, { kind: 'post', nav: 'posts', path: p.url, title: p.title, description: p.summary }, body);
+  return layout(ctx, { kind: 'post', room: 'library', path: p.url, title: p.title, description: p.summary }, body);
 }
 
-export function projects(ctx) {
-  const { gh } = ctx;
-  const repos = [...gh.repos].sort((a, b) => Date.parse(b.pushedAt) - Date.parse(a.pushedAt));
-  const own = repos.filter((r) => !r.fork).length;
-  const body = `${pageHead('~/projects', 'git remote -v', '项目矩阵', `${repos.length} 个公开仓库，其中 ${own} 个原创、${repos.length - own} 个 fork，按最近推送排序`)}
-<section class="container">
-  <div class="repo-grid repo-grid-all">${repos.map((r, i) => repoCard(ctx, r, i % 4)).join('\n')}</div>
-</section>`;
-  return layout(ctx, { kind: 'projects', nav: 'projects', path: '/projects/', title: '项目矩阵', description: 'RichZDS 在 GitHub 上的公开项目。' }, body);
-}
-
-export function about(ctx) {
-  const { gh, site, posts } = ctx;
-  const p = gh.profile;
-  const timeline = [
-    ...gh.repos.map((r) => ({
-      date: r.createdAt,
-      title: r.name,
-      text: (repoNote(ctx, r).note || r.description || '').split('：')[0],
-      href: r.url,
-      fork: r.fork,
-    })),
-    { date: site.since, title: 'RICHZDS//NET', text: '这个博客上线', href: '/' },
-  ].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-
-  const body = `${pageHead('~/about', 'cat dossier.txt', '身份档案', '')}
-<section class="container dossier">
-  <div class="dossier-card reveal">
-    <div class="dossier-photo"><img src="/assets/img/avatar.jpg" alt="${esc(p.name)} 的 GitHub 头像" width="240" height="240"><i class="id-scan"></i></div>
-    <dl class="dossier-fields mono">
-      <div><dt>HANDLE</dt><dd>${esc(p.login)}</dd></div>
-      <div><dt>ALIAS</dt><dd>${esc(p.name)}</dd></div>
-      <div><dt>CLASS</dt><dd>NETRUNNER / 全栈学徒</dd></div>
-      <div><dt>LINKED</dt><dd>${fmtDate(p.createdAt)}</dd></div>
-      <div><dt>REPOS</dt><dd>${p.publicRepos} PUBLIC</dd></div>
-      <div><dt>LOGS</dt><dd>${posts.length} POSTS</dd></div>
-      <div><dt>STATUS</dt><dd class="ok">● ONLINE</dd></div>
-    </dl>
-  </div>
-  <div class="dossier-main">
-    <section class="panel reveal">
-      <h2 class="panel-title"><span class="mono">SELF_REPORT</span>自述</h2>
-      <p class="bio-quote">「${esc(p.bio)}」</p>
-      <p>这里是 ${esc(p.login)} 的个人站点。GitHub 签名写着「${esc(p.bio)}」，所以这里的文章也尽量按模块拆开讲：接口怎么定、分层怎么切、数据怎么流，再加上踩过的坑。</p>
-      <p>仓库里能看到的方向：Go 后端（GoFrame、并发与锁）、Java 后端（Spring Boot、MyBatis-Plus）、Vue / React 前端，以及接大模型的 AI 应用；另外还给《三角机构》TRPG 搭了一个社区论坛。</p>
-    </section>
-    <section class="panel reveal">
-      <h2 class="panel-title"><span class="mono">CYBERWARE</span>技能植入</h2>
-      ${langPanel(ctx)}
-    </section>
-    <section class="panel reveal">
-      <h2 class="panel-title"><span class="mono">MISSION_LOG</span>任务日志</h2>
-      <ol class="timeline">${timeline
-        .map(
-          (t) => `<li class="reveal"><time class="mono">${fmtDate(t.date).slice(0, 7).replace('-', '.')}</time><div><a href="${t.href}"${t.href.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${esc(t.title)}</a>${t.fork ? ' <span class="badge">FORK</span>' : ''}<p>${esc(t.text)}</p></div></li>`,
-        )
-        .join('')}</ol>
-    </section>
-    <section class="panel reveal">
-      <h2 class="panel-title"><span class="mono">CONTACT</span>联络频段</h2>
-      <ul class="contact mono">
-        <li><span>GITHUB</span><a href="${p.url}" target="_blank" rel="noopener">github.com/${esc(p.login)}</a></li>
-        <li><span>RSS</span><a href="/rss.xml">${esc(site.url.replace(/^https?:\/\//, ''))}/rss.xml</a></li>
-        <li><span>TERMINAL</span><button type="button" data-term-open>按 \` 键打开站内终端</button></li>
-      </ul>
-    </section>
-  </div>
-</section>`;
-  return layout(ctx, { kind: 'about', nav: 'about', path: '/about/', title: '身份档案', description: `${p.name}（${p.login}）的个人档案。` }, body);
-}
+// ---------------------------------------------------------------- 404：以撒的死亡笔记
 
 export function notFound(ctx) {
-  const body = `<section class="container notfound">
-  <p class="hud-label mono"><span class="hud-dot is-red"></span>CONNECTION LOST</p>
-  <h1 class="nf-code glitch" data-text="404">404</h1>
-  <p class="nf-title">信号丢失：目标节点不存在</p>
-  <pre class="nf-log mono">&gt; traceroute $REQUEST_PATH
-  1  cf-edge         2ms
-  2  richzds.core    4ms
-  3  * * *           ICE 拦截
-&gt; 可能原因：链接已失效 / 地址输错 / 文章被移走了</pre>
-  <div class="hero-cta">
-    <a class="btn btn-primary" href="/"><span>返回主节点</span><small>HOME</small></a>
-    <a class="btn btn-ghost" href="/posts/"><span>浏览档案</span><small>LOGS</small></a>
+  const body = `<section class="death">
+  <div class="death-note">
+    <p class="death-kicker">乌托邦 · 未知房间</p>
+    <h1 class="death-title">你死了</h1>
+    <p class="death-cause">${icon('isaac.dead', 6)}<span>死因<b>404</b></span></p>
+    <p class="death-text">这扇门后面什么都没有：可能门牌号写错了，也可能房间已经被炸掉了。</p>
+    <p class="death-restart"><kbd>R</kbd> 重来 · <a href="/">回起始房</a> · <a href="/library/">去图书馆</a></p>
   </div>
 </section>`;
-  return layout(ctx, { kind: 'notfound', nav: '', path: '/404', title: '404 信号丢失' }, body);
+  return layout(ctx, { kind: 'notfound', room: '', path: '/404', title: '你死了' }, body);
 }
 
 // ---------------------------------------------------------------- 订阅 / 索引
@@ -471,7 +414,7 @@ ${p.tags.map((t) => `<category>${esc(t)}</category>`).join('')}
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
 <channel>
-<title>${esc(site.title)} · ${esc(site.tagline)}</title>
+<title>${esc(site.title)} · ${esc(site.author)}</title>
 <link>${site.url}/</link>
 <description>${esc(site.description)}</description>
 <language>zh-CN</language>
@@ -487,10 +430,7 @@ export function sitemap(ctx) {
   const { site, posts } = ctx;
   const today = fmtDate(new Date());
   const urls = [
-    ['/', today],
-    ['/posts/', today],
-    ['/projects/', today],
-    ['/about/', today],
+    ...Object.values(ROOMS).filter((r) => r.ready).map((r) => [r.path, today]),
     ...posts.map((p) => [p.url, fmtDate(p.updated || p.date)]),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -501,27 +441,13 @@ ${urls.map(([u, d]) => `<url><loc>${site.url}${u}</loc><lastmod>${d}</lastmod></
 }
 
 export function searchIndex(ctx) {
-  const { posts, gh, site } = ctx;
+  const { posts } = ctx;
   return {
-    user: { login: gh.profile.login, name: gh.profile.name, bio: gh.profile.bio, url: gh.profile.url },
-    posts: posts.map((p) => ({
-      n: p.index,
-      slug: p.slug,
-      url: p.url,
-      title: p.title,
-      date: fmtDate(p.date),
-      tags: p.tags,
-      summary: p.summary,
-    })),
-    repos: gh.repos.map((r) => ({
-      name: r.name,
-      url: r.url,
-      lang: r.language,
-      stars: r.stars,
-      fork: r.fork,
-      note: repoNote(ctx, r).note || r.description,
-    })),
-    langs: ctx.stats.languages.slice(0, 6).map((l) => [l.name, +l.pct.toFixed(1)]),
-    since: site.since,
+    posts: posts.map((p) => ({ slug: p.slug, url: p.url, title: p.title, tags: p.tags, summary: p.summary, text: p.text })),
   };
+}
+
+// 旧版网址跳到新房间
+export function redirects() {
+  return ['/posts /library/#posts 301', '/posts/ /library/#posts 301', '/projects /library/#projects 301', '/projects/ /library/#projects 301', '/about /library/#timeline 301', '/about/ /library/#timeline 301'].join('\n') + '\n';
 }

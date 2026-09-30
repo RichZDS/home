@@ -1,34 +1,42 @@
-// 站点配置：改这里就能换标题、打字机文案、首页精选项目。
+// 站点配置：改这里就能换名字、自我介绍、经历和首页精选项目。
 export default {
   url: 'https://richzds.pages.dev',
-  title: 'RichZDS',
-  tagline: '赛博终端',
-  description: '不会编码的 Isaac 的个人博客：Go / Java / Vue / AI 应用的项目档案与学习笔记。',
-  author: '不会编码的Isaac',
+  title: '乌托邦',
+  description: '郑笃实的个人主页：一层以撒风格的地下室，放着我的文章、项目、跑团骰子、塔罗和喜欢的游戏与动漫。',
+  author: '郑笃实',
   github: 'RichZDS',
-  // 上线日期，页脚 UPTIME 从这里开始计时
+  bilibili: { name: '郑笃实', url: 'https://space.bilibili.com/398587915' },
+  // 上线日期
   since: '2026-09-29T18:00:00+08:00',
 
-  // 首页打字机轮播的句子
-  typer: [
-    '欢迎接入，netrunner',
-    'Go · Java · Vue · Python',
-    '先预测，再运行',
-    '在霓虹下写 CRUD，也写并发',
-    'git push --force-with-lease',
+  // 起始房地上用粉笔写的自我介绍
+  intro: {
+    name: '郑笃实',
+    lines: ['FunPlus · agent 开发', '山东理工大学 · 计算机学院'],
+  },
+
+  // 经历：按时间从早到晚，最后一条是现在所在的这一层
+  timeline: [
+    { kind: 'school', name: '山东省实验小学' },
+    { kind: 'school', name: '山东大学附属中学' },
+    { kind: 'school', name: '山东闻韶中学' },
+    { kind: 'school', name: '山东理工大学', role: '计算机学院 · 在读' },
+    { kind: 'work', name: '济南某公司', role: 'Go 后端实习', period: '2025.10 – 2026.02' },
+    { kind: 'work', name: '柚子互娱（上海）', role: '技术中台 · agent 方向实习', period: '2026.03 – 2026.09' },
+    { kind: 'work', name: 'FunPlus', role: 'agent 开发', period: '现在' },
   ],
 
-  // 首页「项目矩阵」展示的仓库，按顺序
+  // 图书馆「项目」书架上展示的仓库，按顺序
   featured: ['Trangleagent', 'golangexe', 'BOSS', 'langchain_demo', 'SportsBackend', 'SDUT'],
 
-  // 「技能芯片」里的技术栈标签（从各仓库的依赖里整理出来的）
+  // 技术栈标签（从各仓库的依赖里整理出来的）
   stack: [
     'GoFrame', 'Spring Boot 3', 'MyBatis-Plus', 'Spring AI', 'FastAPI',
     'Vue 3', 'Ant Design Vue', 'Pinia', 'React', 'ECharts',
     'MySQL', 'Redis', 'MinIO', 'RabbitMQ', 'WebSocket', 'Docker Compose',
   ],
 
-  // 很多仓库在 GitHub 上没有描述，这里补一句中文简介；post 指向对应的博客文章
+  // 很多仓库在 GitHub 上没有描述，这里补一句中文简介；post 指向对应的文章
   repoNotes: {
     Trangleagent: {
       note: '三角机构 TRPG 社区：GoFrame + Vue 3，WebSocket 聊天室、RabbitMQ 广播、MinIO 上传，Docker Compose 一键启动',
@@ -66,7 +74,7 @@ export default {
       note: 'Obsidian 学习笔记库：408、数据库、编译原理、Go 与三角机构规则整理',
     },
     home: {
-      note: '这个博客的源码：零依赖静态生成，GitHub Actions 自动部署到 Cloudflare Pages',
+      note: '这个网站的源码：零依赖静态生成，像素画全部用代码画，GitHub Actions 自动部署到 Cloudflare Pages',
       post: 'hello-world',
     },
     'new-api': {

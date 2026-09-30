@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-// 静态站点生成：content/posts/*.md + GitHub 数据 + static/ → dist/
+// 静态站点生成：content/posts/*.md + GitHub 数据 + 像素素材 + static/ → dist/
 // 用法：node build.mjs [--refresh 强制刷新 GitHub 数据] [--drafts 包含草稿]
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import site from './site.config.mjs';
 import { renderMarkdown } from './src/markdown.mjs';
 import { loadGitHub } from './src/github.mjs';
-import { skylineSVG } from './src/skyline.mjs';
+import { buildPixelAssets } from './src/pixel/assets.mjs';
 import * as T from './src/templates.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -79,6 +80,8 @@ async function loadPosts() {
       // 中文 300 字/分钟、英文 200 词/分钟、代码 20 行/分钟
       minutes: Math.max(1, Math.round(cjk / 300 + latin / 200 + codeLines / 20)),
       summary: data.summary || text.replace(/\s+/g, ' ').trim().slice(0, 110) + '…',
+      // 给图书馆的全文搜索用
+      text: text.replace(/\s+/g, ' ').trim().slice(0, 3000),
     });
   }
   posts.sort((a, b) => b.date - a.date);
@@ -118,9 +121,39 @@ async function write(rel, content) {
   await fs.writeFile(file, content);
 }
 
+const digest = (buf) => crypto.createHash('sha256').update(buf).digest('hex').slice(0, 10);
+
 async function hash(rel) {
-  const buf = await fs.readFile(path.join(ROOT, 'static', rel));
-  return crypto.createHash('sha256').update(buf).digest('hex').slice(0, 10);
+  return digest(await fs.readFile(path.join(ROOT, 'static', rel)));
+}
+
+// 像素字体只保留网站上真正出现过的字。需要 fonttools（pip install fonttools brotli）；
+// 没装的话退回完整字体（约 650 KB），网站照样能用，只是第一次打开慢一点。
+async function pixelFont(pages) {
+  const src = path.join(ROOT, 'fonts-src/fusion-pixel-12px-proportional-zh_hans.otf.woff2');
+  const jsDir = path.join(ROOT, 'static/assets/js');
+  const js = await Promise.all((await fs.readdir(jsDir)).map((f) => fs.readFile(path.join(jsDir, f), 'utf8')));
+  const chars = new Set([...pages.join(''), ...js.join('')]);
+  for (let c = 0x20; c < 0x7f; c++) chars.add(String.fromCharCode(c));
+  for (const c of '，。、：；！？“”‘’「」『』（）《》【】…—·～×←→↑↓') chars.add(c);
+  const text = [...chars].filter((c) => c >= ' ' && c !== '\u007f').join('');
+  const out = path.join(DIST, 'pixel-font.tmp.woff2');
+  let buf;
+  try {
+    execFileSync(process.env.PYTHON || 'python3', [
+      '-m', 'fontTools.subset', src, `--text=${text}`, '--flavor=woff2', `--output-file=${out}`,
+      '--layout-features=kern', '--no-hinting', '--desubroutinize', '--drop-tables+=vhea,vmtx',
+    ], { stdio: 'pipe' });
+    buf = await fs.readFile(out);
+    await fs.rm(out);
+  } catch (err) {
+    console.warn(`[pixel-font] 没能裁剪字体（${String(err.message).split('\n')[0]}），先用完整字体`);
+    buf = await fs.readFile(src);
+  }
+  const rel = `assets/fonts/pixel.${digest(buf)}.woff2`;
+  await write(rel, buf);
+  await write('assets/fonts/OFL.txt', await fs.readFile(path.join(ROOT, 'fonts-src/OFL-fusion-pixel.txt')));
+  return { url: `/${rel}`, size: buf.length, chars: chars.size };
 }
 
 async function main() {
@@ -130,29 +163,35 @@ async function main() {
   await fs.rm(DIST, { recursive: true, force: true });
   await copyDir(path.join(ROOT, 'static'), DIST);
 
+  const px = buildPixelAssets();
+  for (const [rel, buf] of Object.entries(px.files)) await write(rel, buf);
+
   const assets = {
     css: await hash('assets/css/main.css'),
     js: await hash('assets/js/main.js'),
-    term: await hash('assets/js/terminal.js'),
+    stage: await hash('assets/js/stage.js'),
   };
-  const ctx = { site, gh, posts, assets, stats: computeStats(gh) };
+  const ctx = { site, gh, posts, assets, px, stats: computeStats(gh) };
 
-  await write('assets/img/skyline-far.svg', skylineSVG('far'));
-  await write('assets/img/skyline-near.svg', skylineSVG('near'));
-  await write('index.html', T.home(ctx));
-  await write('posts/index.html', T.postsIndex(ctx));
-  for (const [i, p] of posts.entries()) {
-    await write(`posts/${p.slug}/index.html`, T.post(ctx, p, posts[i + 1], posts[i - 1]));
-  }
-  await write('projects/index.html', T.projects(ctx));
-  await write('about/index.html', T.about(ctx));
-  await write('404.html', T.notFound(ctx));
+  const pages = new Map();
+  pages.set('index.html', T.home(ctx));
+  pages.set('library/index.html', T.library(ctx));
+  for (const [i, p] of posts.entries()) pages.set(`posts/${p.slug}/index.html`, T.post(ctx, p, posts[i + 1], posts[i - 1]));
+  pages.set('404.html', T.notFound(ctx));
+
+  const font = await pixelFont([...pages.values()]);
+  for (const [rel, html] of pages) await write(rel, html.replaceAll('__PIXEL_FONT__', font.url));
+
   await write('rss.xml', T.rss(ctx));
   await write('sitemap.xml', T.sitemap(ctx));
   await write('search.json', JSON.stringify(T.searchIndex(ctx)));
+  await write('_redirects', T.redirects());
   await write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${site.url}/sitemap.xml\n`);
 
-  console.log(`built ${posts.length} posts + ${gh.repos.length} repos → dist/ (${Date.now() - t0} ms)`);
+  console.log(
+    `built ${posts.length} posts + ${gh.repos.length} repos → dist/ ` +
+      `(pixel font ${font.chars} chars, ${(font.size / 1024).toFixed(0)} KiB; ${Date.now() - t0} ms)`,
+  );
 }
 
 main().catch((err) => {
