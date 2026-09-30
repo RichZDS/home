@@ -1,30 +1,28 @@
-# 乌托邦 · 郑笃实的地下室
+# 乌托邦 · 郑笃实的个人主页
 
 [![Deploy](https://github.com/RichZDS/home/actions/workflows/deploy.yml/badge.svg)](https://github.com/RichZDS/home/actions/workflows/deploy.yml)
 
-郑笃实的个人主页。整个网站是一层《以撒的结合》风格的像素地下室：首页是起始房，每个主题是一个房间。零依赖的静态生成器（只要 Node.js ≥ 18），部署在 Cloudflare Pages。
+郑笃实的个人主页：写过的文章、做过的项目，还有喜欢的游戏、跑团和动漫。普通的博客结构，用《以撒的结合》风格的像素画做装饰。零依赖的静态生成器（只要 Node.js ≥ 18），部署在 Cloudflare Pages。
 
 - 线上地址：<https://richzds.pages.dev>
-- 操作：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 走路，方向键射眼泪；也可以点地面走过去、点门进房间，手机上点一下就行。右上角的小地图可以直接跳到别的房间。
-- 右下角的以撒会眨眼、眼睛跟着鼠标转，戳他会哭。
-- 系统开启「减少动态效果」时会关掉转场和动画；禁用 JS 时房间变成静态图，门和文章照样能点。
+- 每个页面顶上有一张像素横幅，右下角的以撒会眨眼、眼睛跟着鼠标转，戳他会哭。
+- 系统开启「减少动态效果」时会关掉动画；禁用 JS 时除了骰塔，其他内容照常显示。
 
-| 房间 | 地址 | 内容 | 状态 |
-| --- | --- | --- | --- |
-| 起始房 | `/` | 自我介绍、楼层导览 | 已开放 |
-| 图书馆 | `/library/` | 文章、项目、经历 | 已开放 |
-| 骰子房 | `/dice/` | 3D 骰塔：CoC d100、三角机构 6d4、DnD 全套骰 | 施工中 |
-| 星象房 | `/planetarium/` | 韦特塔罗：每日一张、三张牌阵、凯尔特十字 | 施工中 |
-| 游戏房 | `/games/` | 以撒的结合、黎明杀机 | 施工中 |
-| 商店 | `/shop/` | B 站、GitHub | 施工中 |
-| 蓬莱 | `/penglai/` | 一人之下、日月同错（水墨风） | 施工中 |
+| 栏目 | 地址 | 内容 |
+| --- | --- | --- |
+| 首页 | `/` | 自我介绍、各栏目入口、最近写的文章 |
+| 学习 | `/study/` | 文章（搜索 + 标签筛选）、项目、语言统计 |
+| 游戏 | `/games/` | 以撒的结合、黎明杀机 |
+| 跑团 | `/trpg/` | 骰塔：CoC d100、三角机构 6d4、DnD 多面骰；塔罗（施工中） |
+| 动漫 | `/anime/` | 一人之下、日月同错（水墨配色） |
+| 关于 | `/about/` | 经历、联系方式、关于这个网站 |
 
 ## 目录
 
 ```text
 content/posts/        文章（Markdown + frontmatter）
 data/github.json      GitHub 数据缓存（构建时自动刷新，12 小时有效）
-fonts-src/            像素字体原件（构建时裁剪，不直接发布）
+fonts-src/            字体原件（构建时裁剪，不直接发布）
 src/
   markdown.mjs        Markdown 渲染
   highlight.mjs       代码高亮
@@ -32,13 +30,14 @@ src/
   github.mjs          拉 GitHub 数据
   pixel/
     sprites.mjs       手画的精灵：一个字符一个像素
-    art.mjs           程序生成的墙、地板、门、书架、地毯、边框
-    rooms.mjs         每个房间的门、摆设、出生点、碰撞体
+    art.mjs           程序生成的书架、地毯、相框、骰塔、界面边框和底纹
+    banners.mjs       每个页面顶上的横幅
+    dice.mjs          骰塔里的骰子
     assets.mjs        构建时把上面这些画成 PNG 和精灵图集
 static/               原样复制到 dist/：样式、脚本、头像、_headers
-  assets/js/main.js   全站交互：小地图、转场、看板娘、图书馆筛选、文章目录
-  assets/js/stage.js  房间里的小游戏：走路、射眼泪、苍蝇、便便、硬币、过门
-site.config.mjs       名字、自我介绍、经历、精选项目、仓库简介
+  assets/js/main.js   全站交互：看板娘、文章搜索和标签、文章目录
+  assets/js/dice.js   跑团页的骰塔
+site.config.mjs       名字、自我介绍、经历、游戏 / 跑团 / 动漫栏目的文字、精选项目、仓库简介
 build.mjs             构建入口
 scripts/serve.mjs     本地预览服务器
 scripts/deploy.sh     构建 + 发布到 Cloudflare Pages
@@ -53,13 +52,16 @@ npm run refresh   # 强制重新拉取 GitHub 数据再构建
 npm run deploy    # 构建并发布到 Cloudflare Pages
 ```
 
-构建会用 [fonttools](https://github.com/fonttools/fonttools) 把像素字体裁成只含网站上出现过的字（几十 KB）：
+构建会用 [fonttools](https://github.com/fonttools/fonttools) 把字体裁成只含网站上出现过的字：
 
 ```bash
 pip install fonttools brotli
 ```
 
-没装也能构建，只是会退回完整字体（约 650 KB）。GitHub Actions 里已经装好了。
+- 像素字体裁完三十来 KB；没装 fonttools 也能构建，只是会退回完整字体（约 650 KB）。
+- 动漫页的毛笔字裁完十几 KB；没装 fonttools 时不用毛笔字，退回系统自带的楷体。
+
+GitHub Actions 里已经装好了。
 
 ## 写文章
 
@@ -70,7 +72,7 @@ pip install fonttools brotli
 title: 文章标题
 date: 2026-10-01 20:00
 tags: [Go, 并发]
-summary: 一句话摘要，显示在图书馆和 RSS 里
+summary: 一句话摘要，显示在文章列表和 RSS 里
 repo: golangexe
 period: 2026.07
 ---
@@ -82,7 +84,7 @@ period: 2026.07
 | --- | --- |
 | `title` | 必填 |
 | `date` | 必填，`YYYY-MM-DD` 或 `YYYY-MM-DD HH:mm`，按北京时间 |
-| `tags` | 标签数组，图书馆里可以按标签筛选 |
+| `tags` | 标签数组，「学习」页里可以按标签筛选 |
 | `summary` | 摘要；不写就截取正文开头 |
 | `repo` | 关联的 GitHub 仓库名，文章头部会显示链接 |
 | `period` | 项目时间，比如 `2025.12 — 2026.04` |
@@ -101,8 +103,8 @@ period: 2026.07
 ## 像素画
 
 - 精灵都在 `src/pixel/sprites.mjs` 里用字符画出来：`.` 是透明，其他字母查同一个文件里的调色板 `PAL`。
-- 墙、地板、门、书架、地毯是 `src/pixel/art.mjs` 用固定种子程序生成的，每次构建结果都一样。
-- 构建时画成 PNG 放进 `dist/assets/px/`；运行时 `stage.js` 用 `<canvas>` 在上面叠以撒、苍蝇、眼泪这些会动的东西。
+- 横幅（`src/pixel/banners.mjs`）是 360×96 的小图，地下室那几张沿用以撒的房间画法，动漫页是一张水墨蓬莱。全部用固定种子程序生成，每次构建结果都一样。
+- 构建时画成 PNG 放进 `dist/assets/px/`，页面里按像素放大显示；右下角的以撒是运行时用 `<canvas>` 从精灵图集里取帧画的。
 - 没有用任何游戏素材或原声，所有形象都是照着画风自己画的。
 
 ## 部署
@@ -157,11 +159,11 @@ curl -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_
 
 ## 自定义
 
-- 名字、自我介绍、经历、精选项目、仓库中文简介：`site.config.mjs`
-- 房间的门、摆设、出生点：`src/pixel/rooms.mjs`
+- 名字、自我介绍、经历、游戏 / 跑团 / 动漫栏目的文字、精选项目、仓库中文简介：`site.config.mjs`
+- 横幅里摆什么：`src/pixel/banners.mjs`
 - 以撒和各种小东西的样子：`src/pixel/sprites.mjs`
-- 配色：`static/assets/css/main.css` 顶部的 `:root` 变量
+- 配色：`static/assets/css/main.css` 顶部的 `:root` 变量（动漫页的水墨配色在 `html[data-theme='ink']` 里）
 
-像素字体 [Fusion Pixel](https://github.com/TakWolf/fusion-pixel-font) 以 SIL Open Font License 1.1 授权，许可证见 `fonts-src/OFL-fusion-pixel.txt`。
+字体都以 SIL Open Font License 1.1 授权：像素字体 [Fusion Pixel](https://github.com/TakWolf/fusion-pixel-font)（`fonts-src/OFL-fusion-pixel.txt`），毛笔字 [马善政楷书 Ma Shan Zheng](https://github.com/googlefonts/mashanzheng)（`fonts-src/OFL-ma-shan-zheng.txt`）。
 
-旧版网址 `/posts/`、`/projects/`、`/about/` 通过 `_redirects` 跳到图书馆里对应的位置。
+旧版网址 `/posts/`、`/projects/` 通过 `_redirects` 跳到「学习」页里对应的位置。

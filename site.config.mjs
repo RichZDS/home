@@ -1,21 +1,22 @@
-// 站点配置：改这里就能换名字、自我介绍、经历和首页精选项目。
+// 站点配置：名字、自我介绍、经历、各个栏目的内容都在这里改。
 export default {
   url: 'https://richzds.pages.dev',
   title: '乌托邦',
-  description: '郑笃实的个人主页：一层以撒风格的地下室，放着我的文章、项目、跑团骰子、塔罗和喜欢的游戏与动漫。',
+  description: '郑笃实的个人主页：写过的文章、做过的项目，还有喜欢的游戏、跑团和动漫。',
   author: '郑笃实',
   github: 'RichZDS',
   bilibili: { name: '郑笃实', url: 'https://space.bilibili.com/398587915' },
   // 上线日期
   since: '2026-09-29T18:00:00+08:00',
 
-  // 起始房地上用粉笔写的自我介绍
+  // 首页和「关于」里的自我介绍
   intro: {
     name: '郑笃实',
     lines: ['FunPlus · agent 开发', '山东理工大学 · 计算机学院'],
+    bio: '在 FunPlus 做 agent 开发，山东理工大学计算机学院在读。这里放我写的文章、做过的项目，还有喜欢的游戏、跑团和动漫。',
   },
 
-  // 经历：按时间从早到晚，最后一条是现在所在的这一层
+  // 经历：按时间从早到晚，最后一条是现在
   timeline: [
     { kind: 'school', name: '山东省实验小学' },
     { kind: 'school', name: '山东大学附属中学' },
@@ -26,8 +27,60 @@ export default {
     { kind: 'work', name: 'FunPlus', role: 'agent 开发', period: '现在' },
   ],
 
-  // 图书馆「项目」书架上展示的仓库，按顺序
+  // 「学习」页展示的仓库，按顺序
   featured: ['Trangleagent', 'golangexe', 'BOSS', 'langchain_demo', 'SportsBackend', 'SDUT'],
+
+  // 游戏房
+  games: [
+    {
+      name: '以撒的结合',
+      en: 'The Binding of Isaac',
+      stat: '1000+ 小时',
+      note: '玩得最久的游戏，这个网站的像素小人也是从这里来的。',
+      fav: {
+        label: '最爱的道具',
+        name: '硫磺火',
+        en: 'Brimstone',
+        facts: ['恶魔房道具，拿到以后头上长出一对小角', '眼泪换成蓄力的血激光', '射程无限，能穿透敌人和障碍物，还能扫着打'],
+      },
+    },
+    {
+      name: '黎明杀机',
+      en: 'Dead by Daylight',
+      stat: '屠夫主',
+      note: '基本只玩屠夫。',
+      fav: {
+        label: '本命屠夫',
+        name: '追踪者',
+        en: 'Nemesis',
+        facts: ['出自《生化危机 3》', 'T 病毒触手：蓄力甩出去，打中的人会被感染', '变异等级越高，触手甩得越远；场上还有两只丧尸帮忙巡逻'],
+      },
+    },
+  ],
+
+  // 跑团
+  trpg: {
+    role: '常跑三套规则，平时多半坐在主持人的位置。',
+    systems: [
+      { name: '三角机构', en: 'Triangle Agency', note: '6d4，数 3 的个数' },
+      { name: '克苏鲁的呼唤', en: 'Call of Cthulhu', note: 'd100，对技能值检定' },
+      { name: '龙与地下城', en: 'Dungeons & Dragons', note: 'd20 加调整值' },
+    ],
+  },
+
+  // 动漫
+  anime: {
+    outcast: {
+      name: '一人之下',
+      note: '米二的漫画。整部都喜欢，最喜欢老天师的这句：',
+      quote: '想走的路不好走，想做人不好做，都说是身不由己，不是废话么。己不由心，身又岂能由己！',
+      by: '老天师 · 张之维',
+    },
+    sunMoon: {
+      name: '日月同错',
+      note: '第年秒的漫画。头像就是里面的海山，这一页顶上的蓬莱也是照着他的出身画的。',
+    },
+  },
 
   // 技术栈标签（从各仓库的依赖里整理出来的）
   stack: [

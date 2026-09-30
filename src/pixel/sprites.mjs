@@ -37,6 +37,7 @@ export const PAL = {
   b: '#3a57a8', // 书脊
   B: '#27397a',
   v: '#8a3b8f',
+  V: '#5c2560',
   n: '#2f7d4a',
   N: '#1f5433',
   c: '#ded6c8', // 粉笔
@@ -65,24 +66,6 @@ ksssssssssssssSSSk
 .ksssssssssssSSSk.
 ..kssssssssSSSSk..
 ...kksssSSSSSkk...
-.....kkkkkkkk.....`,
-  // 后脑勺
-  'isaac.head.back': `
-......kkkkkk......
-....kkhhsssskk....
-...khhhssssssSk...
-..khhsssssssssSk..
-.khsssssssssssSSk.
-.kssssssssssssSSk.
-kssssssssssssssSSk
-kssssssssssssssSSk
-kssssssssssssssSSk
-ksssssssssssssSSSk
-ksssssssssssssSSSk
-.kssssssssssSSSSk.
-.kssssssssssSSSSk.
-..ksssssssSSSSSk..
-...kkSSSSSSSSkk...
 .....kkkkkkkk.....`,
   'isaac.eye': `
 .ee.
@@ -123,22 +106,6 @@ mmmm
 ....kSssssssSk....
 .....ksskkssk.....
 .....kkkkkkkk.....`,
-  'isaac.body.walk1': `
-....kSSssssSSk....
-...kskssssssksk...
-...kskssssssksk...
-...kSksssssskSk...
-....kSssssssSk....
-.....kkkkkssk.....
-.........kkkk.....`,
-  'isaac.body.walk2': `
-....kSSssssSSk....
-...kskssssssksk...
-...kskssssssksk...
-...kSksssssskSk...
-....kSssssssSk....
-.....ksskkkkk.....
-.....kkkk.........`,
   // 硫磺火的羊角（戴在头上）
   'isaac.horns': `
 .kk............kk.
@@ -367,55 +334,221 @@ ccccccc
 .ccccc.
 .c.c.c.`,
 
-  // —— 粉笔：操作说明 ————————————————————————————————————
-  'chalk.key': `
-.ccccccccc.
-c.........c
-c.........c
-c.........c
-c.........c
-c.........c
-c.........c
-c.........c
-c.........c
-c.........c
-.ccccccccc.`,
-  'chalk.W': `
-c...c
-c...c
-c.c.c
-cc.cc
-c...c`,
-  'chalk.A': `
-.ccc.
-c...c
-ccccc
-c...c
-c...c`,
-  'chalk.S': `
-.cccc
-c....
-.ccc.
-....c
-cccc.`,
-  'chalk.D': `
-cccc.
-c...c
-c...c
-c...c
-cccc.`,
-  'chalk.E': `
-ccccc
-c....
-cccc.
-c....
-ccccc`,
-  'chalk.up': `
-..c..
-.ccc.
-c.c.c
-..c..
-..c..`,
+  'icon.moon': `
+..kkk..
+.kyyk..
+kyyk...
+kyyk...
+kyyk...
+.kyyk..
+..kkk..`,
+  'icon.heart': `
+.kk.kk.
+krrkrrk
+krHrrrk
+krrrrrk
+.krrrk.
+..krk..
+...k...`,
+
+  // —— 横幅里的摆设 ——————————————————————————————————————
+  pedestal: `
+.kkkkkkkkkkkkkk.
+kjjjjjjjjjjjjjjk
+kgggggggggggggGk
+.kkkkkkkkkkkkkk.
+..kgggggggggGk..
+..kgggggggggGk..
+..kgggggggggGk..
+..kGGGGGGGGGGk..
+.kkkkkkkkkkkkkk.
+kjjgggggggggGGGk
+kkkkkkkkkkkkkkkk`,
+  d20: `
+.....kkk.....
+...kkrrrkk...
+.kkrrrwrrrkk.
+krrrrwrwrrrrk
+krrrrwrwrrrrk
+krrrwrrrwrrrk
+krrrwrrrwrrrk
+krrwrrrrrwrrk
+krrwwwwwwwrrk
+kRrrrrrrrrrRk
+.kkRRrrrRRkk.
+...kkRRRkk...
+.....kkk.....`,
+  d4: `
+.....k.....
+....kbk....
+....kbk....
+...kbwbk...
+...kbbbk...
+..kbbwbbk..
+..kbbbbBk..
+.kbbbbbBBk.
+kbbbbbBBBBk
+kkkkkkkkkkk`,
+  d10: `
+.....k.....
+....knk....
+...knnnk...
+..knnnnnk..
+.knnnwnnnk.
+knnnwnwnnnk
+knnnnwnnnnk
+kNnnnnnnnNk
+.kNnnnnnNk.
+..kNnnnNk..
+...kNnNk...
+....kNk....
+.....k.....`,
+  'tarot.back': `
+kkkkkkkkkkk
+kyyyyyyyyyk
+kyvvvvvvvyk
+kyvvvyvvvyk
+kyvvyyyvvyk
+kyvyyZyyvyk
+kyvvyyyvvyk
+kyvvvyvvvyk
+kyvvvvvvvyk
+kyvvvvvvvyk
+kyvvvyvvvyk
+kyvvyvyvvyk
+kyvvvvvvvyk
+kyyyyyyyyyk
+kkkkkkkkkkk`,
+  'tarot.front': `
+kkkkkkkkkkk
+kxxxxxxxxxk
+kxXXXXXXXxk
+kxXxxyxxXxk
+kxXxyyyxXxk
+kxXyyZyyXxk
+kxXxyyyxXxk
+kxXxxyxxXxk
+kxXxxxxxXxk
+kxXxxxxxXxk
+kxXXXXXXXxk
+kxxxxxxxxxk
+kxxkkkkkxxk
+kxxxxxxxxxk
+kkkkkkkkkkk`,
+  // 黎明杀机的钩子：立柱、横梁、铁链、带血的钩尖
+  hook: `
+..kkkkkkkkkkkkkkkk..
+..kEEEEEEEEEEEEEEk..
+..kEDDDDDDDDDDDDDk..
+..kEDkkkkkkkkkkkkk..
+..kEDk.kk.....kEk...
+..kEDkkDk.....k.k...
+..kEDkDk......kEk...
+..kEDkk........k....
+..kEDk........kEk...
+..kEDk........k.k...
+..kEDk........kEk...
+..kEDk.......kEEk...
+..kEDk.......kEDk...
+..kEDk...k...kEDk...
+..kEDk..krk..kEDk...
+..kEDk..kEk..kEDk...
+..kEDk..kEDk.kEDk...
+..kEDk..kEDkkEDDk...
+..kEDk...kEDDDDk....
+..kEDk....kkkkk.....
+..kEDk.....r........
+..kEDk..............
+..kEDk.....r........
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+..kEDk..............
+.kkEDkk.............
+kjjjjjjk............
+kgggggGk............
+kGGGGGGk............
+kkkkkkkk............`,
+  scroll: `
+kkkkkkkkkkkk
+kOuuuuuuuuOk
+kkkkkkkkkkkk
+.kxxxxxxxxk.
+.kxxxxxxxxk.
+.kxxxxxxxxk.
+.kxxxCxxxxk.
+.kxxCCCxxxk.
+.kxCCCCCxxk.
+.kCCCCCCCxk.
+.kxxxxxxCCk.
+.kxxxxxxxxk.
+.kxxkxxxxxk.
+.kxkkkxxxxk.
+.kkkkkkxxxk.
+.kxxxxxxxxk.
+.kxxxxxxxxk.
+.kxxxxxxxxk.
+.kxxxxxxrrk.
+.kxxxxxxrrk.
+kkkkkkkkkkkk
+kOuuuuuuuuOk
+kkkkkkkkkkkk`,
+  'book.open': `
+.kkkkkk..kkkkkk.
+kxxxxxxkkxxxxxxk
+kxCCCCxkkxCCCxxk
+kxxxxxxkkxxxxxxk
+kxCCCxxkkxCCCCxk
+kxxxxxxkkxxxxxxk
+kxCCCCxkkxCCxxxk
+kxxxxxxkkxxxxxxk
+kkkkkkkoOkkkkkkk
+.kooooooooooooOk
+..kkkkkkkkkkkkk.`,
+  'books.stack': `
+..kkkkkkkkkkk..
+..kbbbbbbbbbBk.
+..kBBBBBBBBBBk.
+.kkkkkkkkkkkkk.
+.krrrrrrrrrrRk.
+.kRRyRRRRRRRRk.
+kkkkkkkkkkkkkk.
+kvvvvvvvvvvvvVk
+kVVVVVVVVVVVVVk
+kkkkkkkkkkkkkkk`,
+  d6: `
+.kkkkkkkkk.
+kwwwwwwwwwk
+kwewwwwwewk
+kwwwwwwwwwk
+kwwwwewwwwk
+kwwwwwwwwwk
+kwewwwwwewk
+kwwwwwwwwCk
+kCCCCCCCCCk
+.kkkkkkkkk.`,
+  pavilion: `
+......k......
+.....krk.....
+...kkrrrkk...
+.kkrrrrrrrkk.
+kkkkkkkkkkkkk
+..kk.kkk.kk..
+..kk.kkk.kk..
+.kkkkkkkkkkk.`,
+  crane: `
+k.....k
+.k...k.
+..kkk..`,
+
 };
 
 const cache = new Map();

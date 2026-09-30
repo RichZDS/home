@@ -2,6 +2,7 @@
 // 静态站点生成：content/posts/*.md + GitHub 数据 + 像素素材 + static/ → dist/
 // 用法：node build.mjs [--refresh 强制刷新 GitHub 数据] [--drafts 包含草稿]
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -127,6 +128,23 @@ async function hash(rel) {
   return digest(await fs.readFile(path.join(ROOT, 'static', rel)));
 }
 
+// 用 fonttools 把字体裁成只含 text 里的字，返回 woff2 的 Buffer；没装 fonttools 时返回 null
+function subsetFont(src, text) {
+  const out = path.join(DIST, `font-${process.pid}.tmp.woff2`);
+  try {
+    execFileSync(process.env.PYTHON || 'python3', [
+      '-m', 'fontTools.subset', src, `--text=${text}`, '--flavor=woff2', `--output-file=${out}`,
+      '--layout-features=kern', '--no-hinting', '--desubroutinize', '--drop-tables+=vhea,vmtx',
+    ], { stdio: 'pipe' });
+    return fsSync.readFileSync(out);
+  } catch (err) {
+    console.warn(`[font] 没能裁剪 ${path.basename(src)}（${String(err.message).split('\n')[0]}）`);
+    return null;
+  } finally {
+    fsSync.rmSync(out, { force: true });
+  }
+}
+
 // 像素字体只保留网站上真正出现过的字。需要 fonttools（pip install fonttools brotli）；
 // 没装的话退回完整字体（约 650 KB），网站照样能用，只是第一次打开慢一点。
 async function pixelFont(pages) {
@@ -137,23 +155,22 @@ async function pixelFont(pages) {
   for (let c = 0x20; c < 0x7f; c++) chars.add(String.fromCharCode(c));
   for (const c of '，。、：；！？“”‘’「」『』（）《》【】…—·～×←→↑↓') chars.add(c);
   const text = [...chars].filter((c) => c >= ' ' && c !== '\u007f').join('');
-  const out = path.join(DIST, 'pixel-font.tmp.woff2');
-  let buf;
-  try {
-    execFileSync(process.env.PYTHON || 'python3', [
-      '-m', 'fontTools.subset', src, `--text=${text}`, '--flavor=woff2', `--output-file=${out}`,
-      '--layout-features=kern', '--no-hinting', '--desubroutinize', '--drop-tables+=vhea,vmtx',
-    ], { stdio: 'pipe' });
-    buf = await fs.readFile(out);
-    await fs.rm(out);
-  } catch (err) {
-    console.warn(`[pixel-font] 没能裁剪字体（${String(err.message).split('\n')[0]}），先用完整字体`);
-    buf = await fs.readFile(src);
-  }
+  const buf = subsetFont(src, text) ?? (await fs.readFile(src));
   const rel = `assets/fonts/pixel.${digest(buf)}.woff2`;
   await write(rel, buf);
   await write('assets/fonts/OFL.txt', await fs.readFile(path.join(ROOT, 'fonts-src/OFL-fusion-pixel.txt')));
   return { url: `/${rel}`, size: buf.length, chars: chars.size };
+}
+
+// 动漫页的毛笔字（马善政楷书，OFL）。完整字体 3 MB 多，只裁出页面上用到的几十个字；
+// 没装 fonttools 就不用毛笔字，退回系统的楷体。
+async function brushFont(text) {
+  const buf = subsetFont(path.join(ROOT, 'fonts-src/ma-shan-zheng-regular.woff2'), [...new Set(text)].join(''));
+  if (!buf) return null;
+  const rel = `assets/fonts/brush.${digest(buf)}.woff2`;
+  await write(rel, buf);
+  await write('assets/fonts/OFL-ma-shan-zheng.txt', await fs.readFile(path.join(ROOT, 'fonts-src/OFL-ma-shan-zheng.txt')));
+  return `/${rel}`;
 }
 
 async function main() {
@@ -169,13 +186,18 @@ async function main() {
   const assets = {
     css: await hash('assets/css/main.css'),
     js: await hash('assets/js/main.js'),
-    stage: await hash('assets/js/stage.js'),
+    dice: await hash('assets/js/dice.js'),
   };
-  const ctx = { site, gh, posts, assets, px, stats: computeStats(gh) };
+  const brush = await brushFont(T.brushText(site));
+  const ctx = { site, gh, posts, assets, px, brushFont: brush, stats: computeStats(gh) };
 
   const pages = new Map();
   pages.set('index.html', T.home(ctx));
-  pages.set('library/index.html', T.library(ctx));
+  pages.set('study/index.html', T.study(ctx));
+  pages.set('games/index.html', T.games(ctx));
+  pages.set('trpg/index.html', T.trpg(ctx));
+  pages.set('anime/index.html', T.anime(ctx));
+  pages.set('about/index.html', T.about(ctx));
   for (const [i, p] of posts.entries()) pages.set(`posts/${p.slug}/index.html`, T.post(ctx, p, posts[i + 1], posts[i - 1]));
   pages.set('404.html', T.notFound(ctx));
 
@@ -190,7 +212,7 @@ async function main() {
 
   console.log(
     `built ${posts.length} posts + ${gh.repos.length} repos → dist/ ` +
-      `(pixel font ${font.chars} chars, ${(font.size / 1024).toFixed(0)} KiB; ${Date.now() - t0} ms)`,
+      `(pixel font ${font.chars} chars, ${(font.size / 1024).toFixed(0)} KiB; brush font ${brush ? 'subset' : 'skipped'}; ${Date.now() - t0} ms)`,
   );
 }
 
