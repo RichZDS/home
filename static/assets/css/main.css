@@ -173,6 +173,38 @@ kbd { font-family: var(--f-code); font-size: 12px; padding: 1px 5px; border: 1px
   background: #1a0612; border-radius: 4% / 6%;
   box-shadow: inset 0 0 14px rgb(255 46 136 / .55), 0 0 10px rgb(255 46 136 / .25);
 }
+/* 街机旁边的方块：CSS 3D 立方体，贴图是 main.js 现画的 16×16 像素 */
+.mc-blocks { position: absolute; inset: 0; }
+.mc-block {
+  --px: 56px;
+  position: absolute; left: var(--x); top: var(--y); width: var(--px); height: var(--px);
+  transform-style: preserve-3d; transform: rotateX(-30deg) rotateY(-45deg);
+  cursor: pointer; transition: transform .25s ease, opacity .25s ease;
+}
+.mc-block:hover { transform: rotateX(-30deg) rotateY(-45deg) translateY(-4px); }
+.mc-block.is-hit { animation: mc-hit .18s ease; }
+.mc-block.is-broken { transform: rotateX(-30deg) rotateY(-45deg) scale(0); opacity: 0; pointer-events: none; }
+.mc-face {
+  position: absolute; inset: 0; display: block;
+  background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated;
+  backface-visibility: hidden;
+}
+.mc-top { transform: rotateX(90deg) translateZ(calc(var(--px) / 2)); }
+.mc-front { transform: translateZ(calc(var(--px) / 2)); filter: brightness(.8); }
+.mc-right { transform: rotateY(90deg) translateZ(calc(var(--px) / 2)); filter: brightness(.6); }
+.mc-block[data-tex='diamond'] .mc-face { filter: drop-shadow(0 0 6px rgb(34 230 255 / .7)); }
+.mc-block[data-tex='diamond'] .mc-front { filter: brightness(.85) drop-shadow(0 0 6px rgb(34 230 255 / .7)); }
+.mc-block[data-tex='diamond'] .mc-right { filter: brightness(.65) drop-shadow(0 0 6px rgb(34 230 255 / .7)); }
+.mc-bit {
+  position: absolute; width: 7px; height: 7px; margin: -3px 0 0 -3px; z-index: 3; pointer-events: none;
+  background-size: 300% 300%; image-rendering: pixelated;
+  animation: mc-bit .85s cubic-bezier(.2, .6, .4, 1) forwards;
+}
+@keyframes mc-hit { 0%, 100% { transform: rotateX(-30deg) rotateY(-45deg); } 50% { transform: rotateX(-30deg) rotateY(-45deg) scale(.92); } }
+@keyframes mc-bit {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + 90px)) rotate(200deg); opacity: 0; }
+}
 .hero-games .kicker { font-family: var(--f-orbitron); color: var(--accent); letter-spacing: .3em; }
 .hero-games .hero-title { font-size: 80px; color: var(--accent-ink); text-shadow: 0 0 18px rgb(34 230 255 / .35); }
 .hero-games .hero-sub { font-family: var(--f-px); font-size: 22px; color: var(--accent2); }
@@ -499,7 +531,7 @@ button.tag:hover, a.tag:hover { border-color: var(--text); color: var(--text); }
 
 /* ---------------------------------------------------------------- 赛博朋克：游戏房 */
 
-.hud-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 24px; margin-top: 32px; }
+.hud-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 24px; margin-top: 32px; }
 .hud {
   position: relative; padding: 24px 28px 26px;
   background: var(--surface); border: 1px solid var(--line);

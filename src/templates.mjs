@@ -344,8 +344,15 @@ export function games(ctx) {
     title: `<span class="glitch" data-text="游戏房">${use('pixel', '游戏房')}</span>`,
     sub: site.games.map((g) => esc(g.name)).join(' · '),
     alt: '霓虹灯牌：青色霓虹管勾出一台街机的轮廓，屏幕上一个黄色的吃豆人一张一合地吃着豆子',
-    // 街机的屏幕：main.js 在这块 canvas 上循环画吃豆人
-    extra: ctx.images['hero-games'] ? '<canvas class="arcade-screen" aria-hidden="true"></canvas>' : '',
+    // 街机的屏幕：main.js 在这块 canvas 上循环画吃豆人；旁边的方块也是 main.js 现画贴图的立方体，点四下挖掉
+    extra: ctx.images['hero-games']
+      ? `<canvas class="arcade-screen" aria-hidden="true"></canvas>
+    <div class="mc-blocks" aria-hidden="true">
+      <i class="mc-block" data-tex="stone" style="--x:16%;--y:69.6%"></i>
+      <i class="mc-block" data-tex="grass" style="--x:16%;--y:58.6%"></i>
+      <i class="mc-block" data-tex="diamond" style="--x:76%;--y:69.6%"></i>
+    </div>`
+      : '',
   })}
 <div class="wrap">
   <div class="hud-grid">

@@ -401,6 +401,91 @@ function gamesRoom() {
     }, { passive: true });
   }
 
+  // 方块：16×16 的贴图现画（草、石头、钻石矿），CSS 3D 拼成立方体；点四下挖掉，几秒后长回来
+  const blocks = $$('.mc-block');
+  if (blocks.length) {
+    const texture = (paint) => {
+      const c = doc.createElement('canvas');
+      c.width = c.height = 16;
+      const g = c.getContext('2d');
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+        const col = paint(x, y);
+        if (!col) continue;
+        g.fillStyle = col;
+        g.fillRect(x, y, 1, 1);
+      }
+      return `url(${c.toDataURL()})`;
+    };
+    const shade = (r, g, b, v) => `rgb(${r + v},${g + v},${b + v})`;
+    const n = (k) => Math.round(rand(-k, k));
+    const grassTop = () => shade(88, 158, 58, n(14));
+    const dirt = () => shade(134, 96, 62, n(12));
+    const stone = () => shade(124, 124, 124, n(14));
+    const TEX = {
+      grass: { top: texture(grassTop), side: texture((x, y) => (y < 3 || (y < 5 && Math.random() < 0.45) ? grassTop() : dirt())) },
+      stone: { top: texture(stone), side: texture(stone) },
+      diamond: (() => {
+        const gems = new Set();
+        for (let k = 0; k < 5; k++) {
+          const cx = 1 + Math.floor(Math.random() * 13), cy = 1 + Math.floor(Math.random() * 13);
+          [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]].forEach(([dx, dy], i) => (i < 4 || Math.random() < 0.5) && gems.add(`${cx + dx},${cy + dy}`));
+        }
+        const ore = (x, y) => (gems.has(`${x},${y}`) ? (Math.random() < 0.25 ? '#dffcff' : shade(64, 220, 232, n(18))) : stone());
+        return { top: texture(ore), side: texture(ore) };
+      })(),
+    };
+    const CRACKS = [1, 2, 3].map((stage) => texture((x, y) => {
+      const d = Math.abs(x - 7.5) + Math.abs(y - 7.5);
+      const on = ((x * 7 + y * 13 + stage * 5) % 11 < stage + 1) && d < 5 + stage * 3.2 && Math.random() < 0.55;
+      return on ? 'rgba(0,0,0,.72)' : null;
+    }));
+    const art = $('.hero-art');
+    const size = () => blocks.forEach((b) => b.style.setProperty('--px', `${Math.round(art.clientWidth * 0.085)}px`));
+    size();
+    addEventListener('resize', size, { passive: true });
+    for (const b of blocks) {
+      const t = TEX[b.dataset.tex] || TEX.stone;
+      b.innerHTML = '<b class="mc-face mc-top"></b><b class="mc-face mc-front"></b><b class="mc-face mc-right"></b>';
+      const faces = $$('.mc-face', b);
+      const paint = (stage) => faces.forEach((f) => (f.style.backgroundImage = `${stage ? CRACKS[stage - 1] + ', ' : ''}${f.classList.contains('mc-top') ? t.top : t.side}`));
+      paint(0);
+      let stage = 0, busy = false;
+      b.addEventListener('click', () => {
+        if (busy) return;
+        stage++;
+        if (stage < 4) {
+          paint(stage);
+          b.classList.remove('is-hit');
+          void b.offsetWidth;
+          b.classList.add('is-hit');
+          return;
+        }
+        busy = true;
+        b.classList.add('is-broken');
+        if (!reduce) {
+          const r = b.getBoundingClientRect(), host = art.getBoundingClientRect();
+          for (let i = 0; i < 10; i++) {
+            const bit = doc.createElement('i');
+            bit.className = 'mc-bit';
+            bit.style.left = `${r.left - host.left + r.width / 2}px`;
+            bit.style.top = `${r.top - host.top + r.height / 2}px`;
+            bit.style.setProperty('--dx', `${rand(-70, 70)}px`);
+            bit.style.setProperty('--dy', `${rand(-90, -20)}px`);
+            bit.style.backgroundImage = i % 3 ? t.side : t.top;
+            art.append(bit);
+            setTimeout(() => bit.remove(), 900);
+          }
+        }
+        setTimeout(() => {
+          stage = 0;
+          paint(0);
+          b.classList.remove('is-broken', 'is-hit');
+          busy = false;
+        }, 3500);
+      });
+    }
+  }
+
   // 报警：时不时弹一条红色 ERROR，过 1–3 秒自己变成绿色 APPROVE，再淡出
   const ERRORS = ['SIGNAL LOST', 'CHECKSUM MISMATCH', 'ENTITY 0x1F NOT FOUND', 'MEMORY LEAK DETECTED', 'INPUT LAG > 200 MS', 'COIN JAMMED', 'BRIMSTONE OVERHEAT', 'GENERATOR UNSTABLE'];
   const OKS = ['RECALIBRATED', 'ALL SYSTEMS NOMINAL', 'SYNC RESTORED', 'ACCESS GRANTED', 'CONTINUE? 9… 8…'];
