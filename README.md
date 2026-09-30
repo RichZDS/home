@@ -1,5 +1,7 @@
 # RICHZDS//NET · 赛博终端
 
+[![Deploy](https://github.com/RichZDS/home/actions/workflows/deploy.yml/badge.svg)](https://github.com/RichZDS/home/actions/workflows/deploy.yml)
+
 RichZDS（不会编码的Isaac）的个人博客，赛博朋克风格。零依赖的静态生成器（只要 Node.js ≥ 18），部署在 Cloudflare Pages。
 
 - 线上地址：<https://richzds.pages.dev>
@@ -68,6 +70,24 @@ period: 2026.07
 图片放在 `static/assets/img/` 下，用 `![说明](/assets/img/xxx.png)` 引用。
 
 ## 部署
+
+### 自动部署（GitHub Actions）
+
+推送到 `main` 后，[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 会自动构建并发布到 Cloudflare Pages，一般一两分钟就能上线。另外：
+
+- Actions 页面点「Run workflow」可以手动重新部署，同时刷新 GitHub 数据；
+- 每周一 04:00（北京时间）自动刷新一次 GitHub 数据并重新部署；
+- 只改 `README.md` 或 `.gitignore` 不会触发部署。
+
+第一次使用前，在仓库 **Settings → Secrets and variables → Actions** 里添加一个 secret：
+
+| Name | Value |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | 带「Cloudflare Pages: 编辑」权限的 Cloudflare API 令牌 |
+
+没有这个 secret 时，工作流只做构建检查，不会部署。
+
+### 本地部署
 
 `npm run deploy` 会读取项目根目录的 `.env`（已被 `.gitignore` 忽略）：
 

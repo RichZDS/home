@@ -1,0 +1,52 @@
+# 推送到 main 时自动构建并发布到 Cloudflare Pages（richzds.pages.dev）。
+# 需要在仓库 Settings → Secrets and variables → Actions 里添加 CLOUDFLARE_API_TOKEN
+# （带「Cloudflare Pages: 编辑」权限的令牌）。没配置时只做构建检查，不部署。
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - README.md
+      - .gitignore
+  # Actions 页面上可以手动点「Run workflow」重新部署
+  workflow_dispatch:
+  schedule:
+    # 每周一 04:00（北京时间）重新拉一次 GitHub 数据，让「项目矩阵」保持最新
+    - cron: '0 20 * * 0'
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 1bac39ebecf3721548311fad79f8aeb2
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_PAGES_PROJECT: richzds
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Build
+        # 手动触发和定时任务强制刷新 GitHub 数据；普通推送沿用缓存（超过 12 小时也会自动刷新）
+        run: node build.mjs ${{ github.event_name != 'push' && '--refresh' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Deploy to Cloudflare Pages
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: npx --yes wrangler@4 pages deploy dist --project-name "$CF_PAGES_PROJECT" --branch main --commit-dirty=true
+
+      - name: Skip deploy
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::warning title=没有部署::仓库还没有配置 CLOUDFLARE_API_TOKEN，这次只做了构建检查。"
