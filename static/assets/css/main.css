@@ -142,8 +142,7 @@ kbd { font-family: var(--f-code); font-size: 12px; padding: 1px 5px; border: 1px
 .nav a:hover { color: var(--text); }
 .nav a[aria-current] { color: var(--text); }
 .nav a[aria-current]::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; background: var(--accent); }
-html[data-theme='games'] .nav a { font-family: var(--f-px); font-size: 24px; }
-html[data-theme='games'] .brand { color: var(--accent-ink); text-shadow: 0 0 12px rgb(34 230 255 / .35); }
+/* 顶栏五个皮肤只换颜色，字体和高度全站一样，切页时不会跳 */
 
 /* ---------------------------------------------------------------- 主视觉：左边标题，右边一张版画 */
 
@@ -736,7 +735,6 @@ html[data-theme='trpg'] .tag[aria-pressed='true'] { background: var(--accent); b
   .nav { width: 100%; justify-content: space-between; overflow-x: auto; }
   .nav a { padding: 8px 2px 10px; }
   .nav a[aria-current]::after { left: 2px; right: 2px; }
-  html[data-theme='games'] .nav a { font-size: 24px; }
   .hero { grid-template-columns: 1fr; gap: 8px; margin-top: 18px; }
   .hero-art { order: -1; }
   .hero-title { font-size: 48px; }
