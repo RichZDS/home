@@ -1,5 +1,5 @@
 /* 乌托邦 — 全站交互：看板娘以撒、「学习」页的搜索和标签、文章目录。
-   跑团页的骰塔在 dice.js，只有那一页才加载。 */
+   跑团页的骰塔在 dice.js、塔罗在 tarot.js，只有那一页才加载。 */
 
 const doc = document;
 const root = doc.documentElement;
@@ -79,7 +79,7 @@ const mascot = (() => {
   const say = $('.mascot-say', box);
   const W = cv.width;
   const IX = 50, IY = 36, GROUND = 60;
-  const st = { blink: 2, cry: 0, bob: 0, lookX: 0, lookY: 0, pokes: [], tears: [], drops: [], shown: false, bannerVisible: false };
+  const st = { blink: 2, cry: 0, bob: 0, lookX: 0, lookY: 0, pokes: [], tears: [], drops: [], shown: false };
   let img = null, raf = 0, last = 0, sayTimer = 0;
 
   function speak(pool) {
@@ -172,9 +172,9 @@ const mascot = (() => {
     raf = 0;
   }
 
-  // 横幅里已经有一个以撒的时候，右下角这个先躲起来
+  // 页面切到后台时停下来
   function sync() {
-    const show = !st.bannerVisible && !doc.hidden;
+    const show = !doc.hidden;
     if (show === st.shown) return;
     st.shown = show;
     box.hidden = false;
@@ -192,15 +192,6 @@ const mascot = (() => {
   }, { passive: true });
   $('.mascot-hit', box).addEventListener('click', poke);
   doc.addEventListener('visibilitychange', sync);
-
-  const twin = $('[data-isaac]');
-  if (twin && 'IntersectionObserver' in window) {
-    st.bannerVisible = true;
-    new IntersectionObserver(([entry]) => {
-      st.bannerVisible = entry.isIntersecting;
-      sync();
-    }, { threshold: 0.35 }).observe(twin);
-  }
 
   loadSheet().then((i) => {
     img = i;
@@ -339,4 +330,10 @@ if (diceEl) {
   import(me.dataset.dice)
     .then((m) => m.init(diceEl, { mascot, store, reduce }))
     .catch((err) => console.warn('骰塔加载失败', err));
+}
+const tarotEl = $('.tarot');
+if (tarotEl) {
+  import(me.dataset.tarot)
+    .then((m) => m.init(tarotEl, { mascot, store, reduce }))
+    .catch((err) => console.warn('塔罗加载失败', err));
 }

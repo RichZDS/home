@@ -27,8 +27,28 @@ export default {
     { kind: 'work', name: 'FunPlus', role: 'agent 开发', period: '现在' },
   ],
 
-  // 「学习」页展示的仓库，按顺序
-  featured: ['Trangleagent', 'golangexe', 'BOSS', 'langchain_demo', 'SportsBackend', 'SDUT'],
+  // 「学习」页突出展示的两个项目；其他仓库按 GitHub 的样子列在下面。
+  // repo 对上 GitHub 仓库名时会自动带上星数、语言和更新时间；仓库还没公开时用这里的 url / langs 顶上
+  featured: [
+    {
+      repo: 'SDUT',
+      title: 'SDUT 计科中外学习小 tip',
+      tagline: '前人走过的弯路，后人不必再走',
+      desc: '山东理工大学计算机学院中外合作办学班的学习资料库。刚进大学时，作业答案、PTA 的代码和思路、历年试卷、上完一门课才悟出来的重点，全靠口口相传、纯属偶然。这个仓库把这些东西按学期整理成公开的、大家可以一起补充的资料，让后来的人少走弯路。',
+      facts: ['按学期分目录：大一下、大二上', '离散数学 · 线性代数 · 面向对象 · 马克思主义原理', '课程笔记、作业思路、历年试卷、踩坑记录'],
+      post: 'sdut-study-tips',
+    },
+    {
+      repo: 'easygo_agent',
+      title: 'EasyGo Agent 集群',
+      tagline: '可以快速部署的通用 Agent 集群基础版',
+      desc: 'EasyGo 只负责 Agent 的运行、通信、协作、质量和交付，不含具体业务；在它上面加一个 Agent 包（角色、工作流、技能、工具、验收检查），就能改造成专用 Agent。三个可以分别部署的服务通过 JSON-RPC over HTTPS + 双向 TLS 互相调用：Go 写的 AI 网关负责模型协议映射、流式输出和用量计价；TypeScript 写的 Agent Loop 负责会话、持久队列和模型 / 工具循环；Go 写的工坊负责接入 Codex、Claude Code 这些 CLI 框架，管理工作区和产物。',
+      facts: ['三个服务：ai-gateway（Go）· agent-loop（TypeScript）· workshop（Go）', '托管平台：Web 控制台、按 token 计费的钱包、每次执行一个无网络只读根的沙箱容器', '协作、质量闸、Agent 包还在设计中'],
+      langs: ['Go', 'TypeScript'],
+      url: 'https://github.com/RichZDS/easygo_agent',
+      status: '仓库还在整理，公开后这里会自动接上 GitHub 的数据',
+    },
+  ],
 
   // 游戏房
   games: [

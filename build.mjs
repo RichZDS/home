@@ -229,6 +229,7 @@ async function main() {
     css: await hash('assets/css/main.css'),
     js: await hash('assets/js/main.js'),
     dice: await hash('assets/js/dice.js'),
+    tarot: await hash('assets/js/tarot.js'),
   };
   // 模板渲染时把各种字体用到的字收集到这里，渲染完再裁字体
   const texts = Object.fromEntries(Object.keys(FONTS).map((k) => [k, new Set()]));
@@ -236,13 +237,16 @@ async function main() {
     for (const c of String(text)) texts[font].add(c);
     return text;
   };
-  // 插画：static/assets/img/ 里有哪张就用哪张（hero-study.jpg → images['hero-study']），带内容 hash 做版本号
+  // 插画：static/assets/img/ 里有哪张就用哪张（hero-study.webp → images['hero-study']），带内容 hash 做版本号。
+  // 同名多种格式并存时优先 webp（透明底）
   const images = {};
   const imgDir = path.join(ROOT, 'static/assets/img');
-  for (const f of await fs.readdir(imgDir)) {
-    const m = f.match(/^(hero-[a-z]+|mascot-[a-z]+)\.(jpg|png|webp)$/);
-    if (m) images[m[1]] = `/assets/img/${f}?v=${digest(await fs.readFile(path.join(imgDir, f)))}`;
-  }
+  const rank = { jpg: 0, png: 1, webp: 2 };
+  const imgFiles = (await fs.readdir(imgDir))
+    .map((f) => [f, f.match(/^(hero-[a-z]+|tower-[a-z]+|tarot-back|mascot-[a-z]+)\.(jpg|png|webp)$/)])
+    .filter(([, m]) => m)
+    .sort((a, b) => rank[a[1][2]] - rank[b[1][2]]);
+  for (const [f, m] of imgFiles) images[m[1]] = `/assets/img/${f}?v=${digest(await fs.readFile(path.join(imgDir, f)))}`;
   const ctx = { site, gh, posts, assets, px, use, images, stats: computeStats(gh) };
 
   const pages = new Map();
@@ -255,13 +259,16 @@ async function main() {
   for (const [i, p] of posts.entries()) pages.set(`posts/${p.slug}/index.html`, T.post(ctx, p, posts[i + 1], posts[i - 1]));
   pages.set('404.html', T.notFound(ctx));
 
-  // 像素字：全站的以撒气泡和游戏区都用，把所有页面和脚本里出现过的字都裁进去
-  const jsDir = path.join(ROOT, 'static/assets/js');
-  const js = await Promise.all((await fs.readdir(jsDir)).map((f) => fs.readFile(path.join(jsDir, f), 'utf8')));
-  for (const c of [...pages.values()].join('') + js.join('')) texts.pixel.add(c);
+  // 像素字：全站的以撒气泡和游戏区都用，把所有页面和 main.js（以撒的台词）里出现过的字都裁进去
+  const mainJs = await fs.readFile(path.join(ROOT, 'static/assets/js/main.js'), 'utf8');
+  for (const c of [...pages.values()].join('') + mainJs) texts.pixel.add(c);
   for (let c = 0x20; c < 0x7f; c++) texts.pixel.add(String.fromCharCode(c));
   for (const c of '，。、：；！？“”‘’「」『』（）《》【】…—·～×←→↑↓') texts.pixel.add(c);
-  for (const c of T.SCRIPT_TEXT.brush) texts.brush.add(c);
+  // 脚本里才会出现的字：骰子判定（楷书）、骰子数字（Cinzel）、塔罗牌名（行书）
+  for (const [font, text] of Object.entries(T.SCRIPT_TEXT)) for (const c of text) texts[font].add(c);
+  const { CARDS } = await import('./static/assets/js/tarot-cards.js');
+  for (const c of CARDS.map((card) => card.name).join('')) texts.xingshu.add(c);
+  for (const c of CARDS.map((card) => card.en).join('')) texts.cinzel.add(c);
   const fonts = await buildFonts(texts);
   for (const [rel, html] of pages) await write(rel, html.replaceAll('__FONTFACES__', fonts.css));
 
