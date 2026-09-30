@@ -443,17 +443,17 @@ export function trpg(ctx) {
   return layout(ctx, { kind: 'trpg', path: '/trpg/', title: '跑团', description: '跑团骰塔：CoC d100、三角机构 6d4、DnD 多面骰；韦特塔罗 78 张，每日一张、三张牌阵、凯尔特十字。', image: ctx.images['hero-trpg'] }, body);
 }
 
-// ---------------------------------------------------------------- 动漫：水墨
+// ---------------------------------------------------------------- 动漫：水墨纸上贴一张全家福
 
 export function anime(ctx) {
   const { outcast, sunMoon } = ctx.site.anime;
   const { use } = ctx;
   const body = `${hero(ctx, 'anime', {
-    kicker: '海上仙山',
+    kicker: '合家欢',
     title: use('brush', '动漫'),
-    sub: `${esc(outcast.name)} · ${esc(sunMoon.name)}`,
-    alt: '水墨画：一座陡峭的海上仙山，峰顶一座小楼阁，三只仙鹤从山前飞过，天上一轮朱砂红的太阳',
-    extra: `<span class="seal" aria-hidden="true">${use('brush', '蓬莱')}</span>`,
+    sub: `${esc(outcast.name)} · ${esc(sunMoon.name)} · 我的世界`,
+    alt: '全家福：老天师张之维坐在正中间比着剪刀手，左边冯宝宝扛着铁锹、张楚岚搭着她的肩，右边是海山了和高皓光，Steve 和 Alex 站在后排，一只苦力怕从右边探出头',
+    extra: `<span class="seal" aria-hidden="true">${use('brush', '全家福')}</span>`,
   })}
 <div class="wrap">
   <section class="ink-card outcast" aria-labelledby="outcast-title">

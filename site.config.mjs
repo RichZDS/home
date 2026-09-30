@@ -13,7 +13,7 @@ export default {
   intro: {
     name: '郑笃实',
     lines: ['FunPlus · agent 开发', '山东理工大学 · 计算机学院'],
-    bio: '在 FunPlus 做 agent 开发，山东理工大学计算机学院在读。这里放我写的文章、做过的项目，还有喜欢的游戏、跑团和动漫。',
+    bio: '这是我的乌托邦世界，欢迎欢迎！',
   },
 
   // 经历：按时间从早到晚，最后一条是现在
@@ -67,7 +67,7 @@ export default {
     {
       name: '黎明杀机',
       en: 'Dead by Daylight',
-      stat: '屠夫主',
+      stat: '屠皇',
       note: '基本只玩屠夫。',
       fav: {
         label: '本命屠夫',
@@ -110,7 +110,7 @@ export default {
     },
     sunMoon: {
       name: '日月同错',
-      note: '第年秒的漫画。头像就是里面的海山，这一页顶上的蓬莱也是照着他的出身画的。',
+      note: '第年秒的漫画。头像就是里面的海山，顶上那张全家福里他也在。',
     },
   },
 
