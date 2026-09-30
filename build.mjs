@@ -243,7 +243,7 @@ async function main() {
   const imgDir = path.join(ROOT, 'static/assets/img');
   const rank = { jpg: 0, png: 1, webp: 2 };
   const imgFiles = (await fs.readdir(imgDir))
-    .map((f) => [f, f.match(/^(hero-[a-z]+|tower-[a-z]+|tarot-back|mascot-[a-z]+)\.(jpg|png|webp)$/)])
+    .map((f) => [f, f.match(/^(hero-[a-z]+|poster-[a-z]+|tower-[a-z]+|tarot-back|mascot-[a-z]+)\.(jpg|png|webp)$/)])
     .filter(([, m]) => m)
     .sort((a, b) => rank[a[1][2]] - rank[b[1][2]]);
   for (const [f, m] of imgFiles) images[m[1]] = `/assets/img/${f}?v=${digest(await fs.readFile(path.join(imgDir, f)))}`;

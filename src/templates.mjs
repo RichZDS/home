@@ -355,6 +355,10 @@ export function games(ctx) {
       : '',
   })}
 <div class="wrap">
+  ${ctx.images['poster-games'] ? `<figure class="chase" aria-label="游戏房墙上的海报">
+    <img class="chase-img" src="${ctx.images['poster-games']}" width="1280" height="853" alt="海报：以撒光着身子在前面一边哭一边跑，眼泪甩了一路，Steve 拎着钻石镐在他旁边一起逃，追踪者在后面弯着腰追，脸上挂着坏笑，一条触手伸向以撒" loading="lazy">
+    <figcaption><b>${use('orbitron', 'NOW PLAYING')}</b><span>${use('pixel', '以撒在前面哭着跑，追踪者在后面坏笑，Steve 也跟着跑')}</span></figcaption>
+  </figure>` : ''}
   <div class="hud-grid">
   ${items}
   </div>
