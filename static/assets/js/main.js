@@ -1,4 +1,4 @@
-/* 乌托邦 — 全站交互：看板娘以撒、「学习」页的搜索和标签、文章目录。
+/* 乌托邦 — 全站交互：看板娘以撒（能拖、会掉、能挂）、「学习」页的搜索和标签、文章目录。
    跑团页的骰塔在 dice.js、塔罗在 tarot.js，只有那一页才加载。 */
 
 const doc = document;
@@ -69,6 +69,9 @@ const LINES = {
   lost: ['这里什么都没有……跟我的口袋一样'],
   crit: ['大成功！今天宜开团', '这手气，留到正式团里用吧'],
   fumble: ['大失败……今天别碰骰子了', '先过个理智检定吧'],
+  pin: ['……你要把我挂起来？', '钉子？等等——', '不要挂我'],
+  hang: ['……救命', '你打算就这么挂着我？', '好高……别松手……', '挂着也行，省得走路'],
+  fall: ['疼……', '你就这么把我扔下来？', '摔得头都晕了……', '我要告诉妈妈'],
 };
 
 const mascot = (() => {
@@ -76,11 +79,24 @@ const mascot = (() => {
   if (!box) return null;
   const cv = $('.mascot-cv', box);
   const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const hit = $('.mascot-hit', box);
   const say = $('.mascot-say', box);
   const W = cv.width;
   const IX = 50, IY = 36, GROUND = 60;
-  const st = { blink: 2, cry: 0, bob: 0, lookX: 0, lookY: 0, pokes: [], tears: [], drops: [], shown: false };
-  let img = null, raf = 0, last = 0, sayTimer = 0;
+  const CX = IX + 9, CY = IY + 12; // 精灵中心取整数，转 90° 时像素不糊
+  const G = 2600; // 重力，px/s²
+  const HANG_KEY = 'utopia.mascot.hang';
+  const st = {
+    blink: 2, cry: 0, bob: 0, lookX: 0, lookY: 0, pokes: [], tears: [], drops: [], shown: false,
+    // 位置物理：x / y 是相对右下角老家的偏移（y ≤ 0 在地面以上）
+    // mode：floor 站在地上 · drag 被提着 · fall 往下掉 · down 摔倒了 · hang 挂在钉子上
+    mode: 'floor', x: 0, y: 0, vx: 0, vy: 0, angle: 0, spin: 0, down: 0, sway: 0, pinned: false,
+  };
+  const home = { left: 0, top: 0 };
+  const lim = { minX: 0, maxX: 0, minY: 0 };
+  let img = null, raf = 0, last = 0, sayTimer = 0, drag = null, swallowClick = false;
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
   function speak(pool) {
     const list = LINES[pool];
@@ -108,11 +124,223 @@ const mascot = (() => {
     });
   }
 
+  /* ---- 位置：老家在右下角，能拖到哪由身体的碰撞框决定 */
+
+  function measure() {
+    const cs = getComputedStyle(box);
+    home.left = innerWidth - parseFloat(cs.right) - box.offsetWidth;
+    home.top = innerHeight - parseFloat(cs.bottom) - box.offsetHeight;
+    lim.minX = -(home.left + hit.offsetLeft);
+    lim.maxX = innerWidth - home.left - hit.offsetLeft - hit.offsetWidth;
+    lim.minY = -(home.top + hit.offsetTop) + 8 * (box.offsetWidth / W); // 顶上留出钉子的位置
+  }
+  function place() {
+    st.x = clamp(st.x, lim.minX, lim.maxX);
+    st.y = clamp(st.y, lim.minY, 0);
+    box.style.setProperty('--mx', `${Math.round(st.x)}px`);
+    box.style.setProperty('--my', `${Math.round(st.y)}px`);
+    box.classList.toggle('is-edge', home.left + st.x < 0);
+    box.classList.toggle('is-top', home.top + st.y + hit.offsetTop < 70);
+  }
+  function setMode(m) {
+    st.mode = m;
+    box.classList.toggle('is-live', m === 'drag' || m === 'fall');
+    box.classList.toggle('is-drag', m === 'drag');
+    box.classList.toggle('is-hung', m === 'hang');
+    box.classList.toggle('is-off', m !== 'floor');
+  }
+  function kick() {
+    sleep();
+    wake();
+  }
+
+  // 换页回来还挂在原地（同一个窗口尺寸才算数）
+  function saveHang(on) {
+    try {
+      if (on) sessionStorage.setItem(HANG_KEY, JSON.stringify({ l: home.left + st.x, t: home.top + st.y, w: innerWidth, h: innerHeight }));
+      else sessionStorage.removeItem(HANG_KEY);
+    } catch {}
+  }
+  function restoreHang() {
+    try {
+      const h = JSON.parse(sessionStorage.getItem(HANG_KEY));
+      if (!h || h.w !== innerWidth || h.h !== innerHeight) return;
+      st.x = h.l - home.left;
+      st.y = h.t - home.top;
+      place();
+      setMode('hang');
+    } catch {}
+  }
+
+  function pin() {
+    st.pinned = true;
+    box.classList.add('is-pin');
+    speak('pin');
+    wake();
+  }
+  function unpin() {
+    st.pinned = false;
+    box.classList.remove('is-pin');
+  }
+  function hang() {
+    unpin();
+    setMode('hang');
+    st.vx = st.vy = st.spin = 0;
+    st.angle = 0;
+    st.sway = reduce ? 0 : 3;
+    saveHang(true);
+    speak('hang');
+    kick();
+  }
+  function release(vx, vy) {
+    saveHang(false);
+    unpin();
+    if (reduce) {
+      st.y = 0;
+      st.angle = 0;
+      place();
+      setMode('floor');
+      return;
+    }
+    st.vx = clamp(vx, -2000, 2000);
+    st.vy = clamp(vy, -2000, 2000);
+    st.spin = Math.abs(st.vx) > 260 ? clamp(st.vx / 150, -7, 7) : 0;
+    setMode('fall');
+    kick();
+  }
+  function crash() {
+    const side = st.vx > 40 ? 1 : st.vx < -40 ? -1 : Math.random() < 0.5 ? -1 : 1;
+    st.vx = st.vy = st.spin = 0;
+    st.angle = (side * Math.PI) / 2;
+    st.down = 1.3;
+    st.cry = 1.3;
+    setMode('down');
+    speak('fall');
+  }
+
+  /* ---- 拖拽：提起来就归重力管；提着不动一会儿头顶长出钉子，松手就挂在那儿；再点一下掉下来 */
+
+  hit.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || drag) return;
+    measure();
+    drag = { id: e.pointerId, px: e.clientX, py: e.clientY, ax: e.clientX, ay: e.clientY, x0: st.x, y0: st.y, moved: false, samples: [], still: 0 };
+    try {
+      hit.setPointerCapture(e.pointerId);
+    } catch {}
+  });
+  hit.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.px, dy = e.clientY - drag.py;
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < 6) return;
+      drag.moved = true;
+      saveHang(false);
+      st.vx = st.vy = st.spin = 0;
+      st.angle = 0;
+      st.sway = 0;
+      say.hidden = true;
+      setMode('drag');
+      kick();
+    }
+    st.x = drag.x0 + dx;
+    st.y = drag.y0 + dy;
+    place();
+    const now = performance.now();
+    drag.samples.push({ t: now, x: e.clientX, y: e.clientY });
+    if (drag.samples.length > 8) drag.samples.shift();
+    if (!drag.still || Math.hypot(e.clientX - drag.ax, e.clientY - drag.ay) > 4) {
+      drag.ax = e.clientX;
+      drag.ay = e.clientY;
+      if (st.pinned) unpin();
+      clearTimeout(drag.still);
+      drag.still = setTimeout(pin, 1400);
+    }
+  });
+  function endDrag(e) {
+    const d = drag;
+    drag = null;
+    clearTimeout(d.still);
+    if (!d.moved) return; // 没拖动：交给 click（戳一下，或者把挂着的放下来）
+    // 拖完松手浏览器还会补一个 click，吃掉它，别当成戳
+    swallowClick = true;
+    setTimeout(() => (swallowClick = false), 250);
+    if (st.pinned) return hang();
+    let vx = 0, vy = 0;
+    const now = performance.now();
+    const tail = d.samples[d.samples.length - 1];
+    if (e && tail && now - tail.t < 120) {
+      const old = d.samples.find((s) => now - s.t < 130) || tail;
+      const dt = Math.max(0.016, (now - old.t) / 1000);
+      vx = (e.clientX - old.x) / dt;
+      vy = (e.clientY - old.y) / dt;
+    }
+    release(vx, vy);
+  }
+  hit.addEventListener('pointerup', (e) => drag && e.pointerId === drag.id && endDrag(e));
+  hit.addEventListener('pointercancel', (e) => drag && e.pointerId === drag.id && endDrag(null));
+  hit.addEventListener('click', () => {
+    if (swallowClick) {
+      swallowClick = false;
+      return;
+    }
+    if (st.mode === 'hang') release(0, 0);
+    else if (st.mode === 'floor') poke();
+  });
+  addEventListener('resize', () => {
+    measure();
+    place();
+  });
+
   function update(dt) {
     st.blink -= dt;
     if (st.blink < -0.12) st.blink = 1.5 + Math.random() * 3.5;
     st.bob = (st.bob + dt) % 1.2;
     st.cry = Math.max(0, st.cry - dt);
+    if (st.mode === 'fall') {
+      st.vy += G * dt;
+      st.x += st.vx * dt;
+      st.y += st.vy * dt;
+      st.angle += st.spin * dt;
+      if (st.x < lim.minX || st.x > lim.maxX) {
+        st.x = clamp(st.x, lim.minX, lim.maxX);
+        st.vx *= -0.45;
+        st.spin *= -0.6;
+      }
+      if (st.y < lim.minY) {
+        st.y = lim.minY;
+        st.vy = Math.abs(st.vy) * 0.3;
+      }
+      if (st.y >= 0) {
+        st.y = 0;
+        const tilt = Math.atan2(Math.sin(st.angle), Math.cos(st.angle));
+        if (st.vy > 720 || Math.abs(tilt) > 0.6) crash();
+        else if (st.vy > 240) {
+          st.vy = -st.vy * 0.35;
+          st.vx *= 0.7;
+          st.angle = st.spin = 0;
+        } else {
+          st.vy = st.angle = st.spin = 0;
+          st.vx *= Math.exp(-9 * dt);
+          if (Math.abs(st.vx) < 12) {
+            st.vx = 0;
+            setMode('floor');
+          }
+        }
+      }
+      place();
+    } else if (st.mode === 'down') {
+      st.down -= dt;
+      if (st.down <= 0) {
+        st.angle *= Math.exp(-14 * dt);
+        if (Math.abs(st.angle) < 0.03) {
+          st.angle = 0;
+          setMode('floor');
+        }
+      }
+    } else if (st.mode === 'hang' && st.sway > 0) {
+      st.sway = Math.max(0, st.sway - dt);
+      st.angle = st.sway ? 0.1 * Math.sin((3 - st.sway) * 6) * (st.sway / 3) : 0;
+    }
     for (const t of st.tears) {
       if (t.delay > 0) {
         t.delay -= dt;
@@ -136,16 +364,39 @@ const mascot = (() => {
     st.drops = st.drops.filter((d) => d.life > 0);
   }
 
+  function drawNail() {
+    ctx.fillStyle = '#1c100d';
+    ctx.fillRect(CX - 3, IY - 7, 7, 3);
+    ctx.fillRect(CX - 1, IY - 5, 3, 5);
+    ctx.fillStyle = '#d6d6df';
+    ctx.fillRect(CX - 2, IY - 6, 5, 1);
+    ctx.fillStyle = '#8f8f9b';
+    ctx.fillRect(CX, IY - 4, 1, 4);
+  }
+
   function render() {
     ctx.clearRect(0, 0, cv.width, cv.height);
-    drawSprite(ctx, img, 'shadow', IX + 2, IY + 20, { alpha: 0.35 });
-    drawIsaac(ctx, img, IX, IY, {
+    const onGround = st.mode === 'floor' || st.mode === 'down' || (st.mode === 'fall' && st.y > -8);
+    if (onGround) drawSprite(ctx, img, 'shadow', IX + 2, IY + 20, { alpha: 0.35 });
+    if (st.mode === 'hang' || st.pinned) drawNail();
+    const pose = {
       eye: st.cry > 0 ? 'isaac.eye.shut' : st.blink < 0 ? 'isaac.eye.blink' : 'isaac.eye',
       mouth: st.cry > 0 ? 'isaac.mouth.open' : 'isaac.mouth',
-      bob: st.bob > 0.6 ? 1 : 0,
-      lookX: st.cry > 0 ? 0 : st.lookX,
-      lookY: st.cry > 0 ? 0 : st.lookY,
-    });
+      bob: st.mode === 'floor' && st.bob > 0.6 ? 1 : 0,
+      lookX: st.cry > 0 || st.mode !== 'floor' ? 0 : st.lookX,
+      lookY: st.cry > 0 ? 0 : st.pinned ? -1 : st.mode === 'drag' || st.mode === 'hang' ? 1 : st.lookY,
+    };
+    if (st.angle) {
+      ctx.save();
+      // 挂着时绕头顶的钉子晃；摔倒时绕身体中心转 90°，再往下挪两个像素躺到地上
+      const py = st.mode === 'hang' ? IY : CY;
+      const sink = st.mode === 'down' ? (2 * Math.abs(st.angle)) / (Math.PI / 2) : 0;
+      ctx.translate(CX, py + sink);
+      ctx.rotate(st.angle);
+      ctx.translate(-CX, -py);
+      drawIsaac(ctx, img, IX, IY, pose);
+      ctx.restore();
+    } else drawIsaac(ctx, img, IX, IY, pose);
     for (const t of st.tears) if (t.delay <= 0) drawSprite(ctx, img, 'tear', t.x - 3, t.y - 3);
     ctx.fillStyle = '#a8defa';
     for (const d of st.drops) ctx.fillRect(Math.round(d.x), Math.round(d.y), 1, 1);
@@ -156,7 +407,7 @@ const mascot = (() => {
     last = t;
     update(dt);
     render();
-    const busy = st.cry > 0 || st.tears.length || st.drops.length;
+    const busy = st.cry > 0 || st.tears.length || st.drops.length || st.mode === 'fall' || st.mode === 'down' || (st.mode === 'hang' && st.sway > 0);
     // 空闲时降到每秒 8 帧，省电
     raf = busy ? requestAnimationFrame(frame) : setTimeout(() => (raf = requestAnimationFrame(frame)), 120);
   }
@@ -190,11 +441,12 @@ const mascot = (() => {
     st.lookX = Math.abs(dx) < 40 ? 0 : Math.sign(dx);
     st.lookY = dy < -60 ? -1 : dy > 60 ? 1 : 0;
   }, { passive: true });
-  $('.mascot-hit', box).addEventListener('click', poke);
   doc.addEventListener('visibilitychange', sync);
 
   loadSheet().then((i) => {
     img = i;
+    measure();
+    restoreHang();
     sync();
     if (root.dataset.page === 'notfound') setTimeout(() => speak('lost'), 900);
   });

@@ -755,20 +755,31 @@ html[data-theme='trpg'] .tag[aria-pressed='true'] { background: var(--accent); b
 
 /* ---------------------------------------------------------------- 看板娘以撒（像素） */
 
+/* --mx / --my 是相对右下角老家的偏移，由 main.js 写：拖着走、往下掉、挂在钉子上 */
 .mascot {
   position: fixed; right: 6px; bottom: 0; z-index: 45;
   width: 240px; height: 192px; pointer-events: none;
+  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
   transition: transform .35s steps(5);
 }
 .mascot[hidden] { display: block; transform: translateY(110%); visibility: hidden; }
 .mascot.is-away { transform: translateY(110%); }
+.mascot.is-live { transition: none; }
+.mascot.is-off { z-index: 55; }
 .mascot-cv { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
 .mascot-hit {
   position: absolute; left: 144px; top: 90px; width: 66px; height: 90px;
-  border: 0; padding: 0; background: transparent; cursor: pointer; pointer-events: auto;
+  border: 0; padding: 0; background: transparent; cursor: grab; pointer-events: auto;
+  touch-action: none; user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+.mascot.is-drag .mascot-hit { cursor: grabbing; }
 .mascot.is-away .mascot-hit { pointer-events: none; }
+/* 被拖到左边或顶上时，气泡换到另一侧 */
+.mascot.is-edge .mascot-say { right: auto; left: 150px; width: max-content; }
+.mascot.is-edge .mascot-say::after { right: auto; left: 20px; }
+.mascot.is-top .mascot-say { bottom: auto; top: 184px; }
+.mascot.is-top .mascot-say::after { bottom: auto; top: -14px; border-top-color: transparent; border-bottom-color: #1c100d; }
 .mascot-say {
   position: absolute; right: 22px; bottom: 100px; max-width: 220px; margin: 0;
   padding: 8px 10px; color: #2b1d14; background: #eadfc2;
@@ -858,6 +869,8 @@ html[data-theme='trpg'] .tag[aria-pressed='true'] { background: var(--accent); b
   .mascot { width: 160px; height: 128px; right: 0; }
   .mascot-hit { left: 96px; top: 60px; width: 44px; height: 60px; }
   .mascot-say { right: 10px; bottom: 66px; max-width: 180px; }
+  .mascot.is-edge .mascot-say { left: 100px; }
+  .mascot.is-top .mascot-say { top: 124px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

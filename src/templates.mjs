@@ -94,7 +94,7 @@ ${body}
 ${footer(ctx, theme)}
 <div class="mascot" hidden>
   <canvas class="mascot-cv" width="80" height="64" aria-hidden="true"></canvas>
-  <button class="mascot-hit" type="button" aria-label="戳一下以撒"></button>
+  <button class="mascot-hit" type="button" aria-label="戳一下以撒（也可以拖着走）"></button>
   <p class="mascot-say" role="status" hidden></p>
 </div>
 <script type="application/json" id="px-atlas">${JSON.stringify(px.atlas)}</script>
