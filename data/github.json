@@ -1,0 +1,178 @@
+{
+  "fetchedAt": "2026-09-29T10:48:21.217Z",
+  "profile": {
+    "login": "RichZDS",
+    "name": "不会编码的Isaac",
+    "bio": "最尊重模块化的选手",
+    "avatar": "https://avatars.githubusercontent.com/u/89328906?v=4",
+    "url": "https://github.com/RichZDS",
+    "publicRepos": 10,
+    "followers": 2,
+    "following": 1,
+    "createdAt": "2021-08-22T03:43:03Z"
+  },
+  "repos": [
+    {
+      "name": "golangexe",
+      "description": "",
+      "url": "https://github.com/RichZDS/golangexe",
+      "homepage": "",
+      "language": "Go",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2026-07-17T11:00:01Z",
+      "pushedAt": "2026-07-17T11:00:05Z",
+      "languages": {
+        "Go": 43483
+      }
+    },
+    {
+      "name": "new-api",
+      "description": "A unified AI model hub for aggregation & distribution. It supports cross-converting various LLMs into OpenAI-compatible, Claude-compatible, or Gemini-compatible formats. A centralized gateway for personal and enterprise model management. 🍥",
+      "url": "https://github.com/RichZDS/new-api",
+      "homepage": "https://www.newapi.ai",
+      "language": "Go",
+      "stars": 0,
+      "forks": 0,
+      "fork": true,
+      "createdAt": "2026-07-01T11:29:39Z",
+      "pushedAt": "2026-07-10T07:16:38Z",
+      "languages": {}
+    },
+    {
+      "name": "langchain_demo",
+      "description": "实训langchain仓库",
+      "url": "https://github.com/RichZDS/langchain_demo",
+      "homepage": "",
+      "language": "Python",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2026-06-29T06:45:47Z",
+      "pushedAt": "2026-06-29T16:14:51Z",
+      "languages": {
+        "Python": 15810,
+        "Vue": 12577,
+        "CSS": 10881,
+        "TypeScript": 2511,
+        "HTML": 402
+      }
+    },
+    {
+      "name": "Trangleagent",
+      "description": "三角机构论坛",
+      "url": "https://github.com/RichZDS/Trangleagent",
+      "homepage": "",
+      "language": "Go",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2026-03-17T09:43:51Z",
+      "pushedAt": "2026-04-14T09:48:33Z",
+      "languages": {
+        "Go": 217221,
+        "Vue": 170987,
+        "TypeScript": 109675,
+        "JavaScript": 4557,
+        "CSS": 3528,
+        "Dockerfile": 569,
+        "HTML": 359
+      }
+    },
+    {
+      "name": "StudyNotes",
+      "description": "",
+      "url": "https://github.com/RichZDS/StudyNotes",
+      "homepage": "",
+      "language": "",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2025-11-24T00:52:55Z",
+      "pushedAt": "2026-03-29T08:11:30Z",
+      "languages": {}
+    },
+    {
+      "name": "BOSS",
+      "description": "",
+      "url": "https://github.com/RichZDS/BOSS",
+      "homepage": "",
+      "language": "Java",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2026-01-08T14:07:56Z",
+      "pushedAt": "2026-01-15T11:55:46Z",
+      "languages": {
+        "Java": 209241,
+        "Vue": 89201,
+        "TypeScript": 28015,
+        "HTML": 329
+      }
+    },
+    {
+      "name": "SportsFrontend",
+      "description": "",
+      "url": "https://github.com/RichZDS/SportsFrontend",
+      "homepage": "",
+      "language": "JavaScript",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2025-12-29T01:30:17Z",
+      "pushedAt": "2026-01-14T11:11:17Z",
+      "languages": {
+        "JavaScript": 53349,
+        "HTML": 310
+      }
+    },
+    {
+      "name": "SportsBackend",
+      "description": "",
+      "url": "https://github.com/RichZDS/SportsBackend",
+      "homepage": "",
+      "language": "Java",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2025-12-29T04:23:05Z",
+      "pushedAt": "2026-01-14T11:10:46Z",
+      "languages": {
+        "Java": 131071
+      }
+    },
+    {
+      "name": "TrangleAgentWeb",
+      "description": "",
+      "url": "https://github.com/RichZDS/TrangleAgentWeb",
+      "homepage": "",
+      "language": "Vue",
+      "stars": 0,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2025-12-11T13:44:27Z",
+      "pushedAt": "2025-12-28T10:39:39Z",
+      "languages": {
+        "Vue": 120992,
+        "TypeScript": 63257,
+        "JavaScript": 4206,
+        "CSS": 538,
+        "HTML": 359
+      }
+    },
+    {
+      "name": "SDUT",
+      "description": "SDUT-计科中外-学习小tip",
+      "url": "https://github.com/RichZDS/SDUT",
+      "homepage": "",
+      "language": "",
+      "stars": 3,
+      "forks": 0,
+      "fork": false,
+      "createdAt": "2025-01-25T14:55:52Z",
+      "pushedAt": "2025-11-17T06:15:23Z",
+      "languages": {}
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "richzds-blog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RichZDS 的赛博朋克风个人博客：零依赖静态生成，部署在 Cloudflare Pages",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "refresh": "node build.mjs --refresh",
+    "dev": "node scripts/serve.mjs --watch",
+    "preview": "node scripts/serve.mjs",
+    "deploy": "bash scripts/deploy.sh"
+  }
+}
